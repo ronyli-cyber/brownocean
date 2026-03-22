@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blunt Ocean Machine</title>
+    <style>
+        body { background: #0a0f14; color: #a0b0c0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #161d26; padding: 2.5rem; border-radius: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); text-align: center; width: 340px; border: 1px solid #243140; }
+        h2 { margin-top: 0; color: #5dade2; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; font-size: 1.2rem; }
+        .control-group { margin: 25px 0; text-align: left; }
+        label { font-size: 11px; text-transform: uppercase; color: #5d6d7e; display: block; margin-bottom: 8px; letter-spacing: 1px; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #5dade2; background: #243140; height: 6px; border-radius: 5px; appearance: none; }
+        button { background: #2e86c1; border: none; color: white; padding: 20px; border-radius: 20px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; width: 100%; margin-top: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        button:hover { background: #3498db; transform: translateY(-2px); }
+        button.active { background: #cb4335; }
+        .status { margin-top: 20px; font-size: 12px; color: #34495e; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Ocean Shield</h2>
+    
+    <div class="control-group">
+        <label>Master Volume</label>
+        <input type="range" id="masterVol" min="0" max="1" step="0.01" value="0.5">
+    </div>
+
+    <div class="control-group">
+        <label>Softness (Bluntness)</label>
+        <input type="range" id="softness" min="150" max="800" step="10" value="350">
+    </div>
+
+    <div class="control-group">
+        <label>Wave Speed (Tide)</label>
+        <input type="range" id="waveSpeed" min="0.05" max="0.3" step="0.01" value="0.12">
+    </div>
+
+    <button id="playBtn">START TIDE</button>
+    <div class="status" id="status">Ready for Deep Sleep</div>
+</div>
+
+<script>
+    let audioCtx;
+    let isPlaying = false;
+    let bL, bR, lfo, bluntFilter, masterGain, swellNode;
+
+    const playBtn = document.getElementById('playBtn');
+    const masterSlider = document.getElementById('masterVol');
+    const softSlider = document.getElementById('softness');
+    const speedSlider = document.getElementById('waveSpeed');
+
+    function createBrownNode() {
+        const bufferSize = 4096;
+        let lastOut = 0.0;
+        const node = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+        node.onaudioprocess = (e) => {
+            let output = e.outputBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                let white = Math.random() * 2 - 1;
+                output[i] = (lastOut + (0.02 * white)) / 1.02;
+                lastOut = output[i];
+                output[i] *= 5.0; // Richer base gain
+            }
+        };
+        return node;
+    }
+
+    playBtn.addEventListener('click', () => {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        if (!isPlaying) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            // 1. Stereo Brown Noise
+            bL = createBrownNode();
+            bR = createBrownNode();
+            const merger = audioCtx.createChannelMerger(2);
+
+            // 2. Blunt Filter (Removes high-end sharpness)
+            bluntFilter = audioCtx.createBiquadFilter();
+            bluntFilter.type = "lowpass";
+            bluntFilter.frequency.value = softSlider.value;
+            bluntFilter.Q.value = 0.5; // Natural roll-off
+
+            // 3. Swell Logic (The Breathing Ocean)
+            swellNode = audioCtx.createGain();
+            lfo = audioCtx.createOscillator();
+            const lfoGain = audioCtx.createGain();
+            
+            lfo.type = 'sine';
+            lfo.frequency.value = speedSlider.value;
+            lfoGain.gain.value = 0.4; // The depth of the volume dip
+            
+            lfo.connect(lfoGain);
+            lfoGain.connect(swellNode.gain);
+            // Default swellNode.gain is 1.0, LFO oscillates it between 0.6 and 1.4
+
+            // 4. Master Output
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = masterSlider.value;
+
+            // Chain everything
+            bL.connect(merger, 0, 0);
+            bR.connect(merger, 0, 1);
+            merger.connect(bluntFilter);
+            bluntFilter.connect(swellNode);
+            swellNode.connect(masterGain);
+            masterGain.connect(audioCtx.destination);
+
+            lfo.start();
+            
+            playBtn.textContent = "STOP TIDE";
+            playBtn.classList.add('active');
+            isPlaying = true;
+        } else {
+            bL.disconnect(); bR.disconnect(); lfo.stop();
+            isPlaying = false;
+            playBtn.textContent = "START TIDE";
+            playBtn.classList.remove('active');
+        }
+    });
+
+    // Real-time Controls
+    masterSlider.oninput = () => { if(masterGain) masterGain.gain.value = masterSlider.value; };
+    softSlider.oninput = () => { if(bluntFilter) bluntFilter.frequency.value = softSlider.value; };
+    speedSlider.oninput = () => { if(lfo) lfo.frequency.value = speedSlider.value; };
+</script>
+</body>
+</html>
