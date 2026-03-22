@@ -1,2 +1,2 @@
-# brownocean
-brown noise near the ocean for street noise masking while you sleep
+# bluntocean
+brown noise near the ocean for masking urban street noise while you sleep
