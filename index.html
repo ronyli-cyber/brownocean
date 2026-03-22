@@ -145,135 +145,169 @@
     </div>
 
     <script>
-        let audioCtx;
-        let biquadFilter;
-        let swellGain;
-        let masterGain;
-        let isPlaying = false;
+    let audioCtx;
+    let biquadFilter;
+    let swellGain;
+    let masterGain;
+    let isPlaying = false;
+    let audioBuffer; // We will use this to store the "Perfect" loop
 
-        function initAudio() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // 1. Noise Generation (Pink-ish/Brown)
-            const bufferSize = 2 * audioCtx.sampleRate;
-            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const output = noiseBuffer.getChannelData(0);
-            
-            let lastOut = 0.0;
-            for (let i = 0; i < bufferSize; i++) {
-                const white = Math.random() * 2 - 1;
-                output[i] = (lastOut + (0.02 * white)) / 1.02;
-                lastOut = output[i];
-                output[i] *= 3.5; // Gain compensation
-            }
-
-            const noiseSource = audioCtx.createBufferSource();
-            noiseSource.buffer = noiseBuffer;
-            noiseSource.loop = true;
-
-            // 2. The "Blunt" Filter
-            biquadFilter = audioCtx.createBiquadFilter();
-            biquadFilter.type = "lowpass";
-            biquadFilter.frequency.value = document.getElementById('softnessSlider').value;
-
-            // 3. The Swell (Tide)
-            swellGain = audioCtx.createGain();
-            
-            // 4. Master Output
-            masterGain = audioCtx.createGain();
-            masterGain.gain.value = 0.8;
-
-            noiseSource.connect(biquadFilter);
-            biquadFilter.connect(swellGain);
-            swellGain.connect(masterGain);
-            masterGain.connect(audioCtx.destination);
-
-            noiseSource.start();
-            updateTide();
+    function initAudio() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const bufferSize = 2 * audioCtx.sampleRate;
+        audioBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = audioBuffer.getChannelData(0);
+        
+        let lastOut = 0.0;
+        for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            output[i] = (lastOut + (0.02 * white)) / 1.02;
+            lastOut = output[i];
+            output[i] *= 3.5; 
         }
 
-        function updateTide() {
-            if (!isPlaying) return;
-            const now = audioCtx.currentTime;
-            const speed = parseFloat(document.getElementById('speedSlider').value);
-            
-            if (speed === 0) {
-                swellGain.gain.setTargetAtTime(0.8, now, 0.1);
-            } else {
-                const period = 1 / speed;
-                // Create a smooth oscillation for the tide
-                swellGain.gain.cancelScheduledValues(now);
-                for (let i = 0; i < 10; i++) {
-                    const t = i * (period / 2);
-                    const val = i % 2 === 0 ? 0.9 : 0.4;
-                    swellGain.gain.exponentialRampToValueAtTime(val, now + t);
-                }
+        const noiseSource = audioCtx.createBufferSource();
+        noiseSource.buffer = audioBuffer;
+        noiseSource.loop = true;
+
+        biquadFilter = audioCtx.createBiquadFilter();
+        biquadFilter.type = "lowpass";
+        biquadFilter.frequency.value = document.getElementById('softnessSlider').value;
+
+        swellGain = audioCtx.createGain();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.8;
+
+        noiseSource.connect(biquadFilter);
+        biquadFilter.connect(swellGain);
+        swellGain.connect(masterGain);
+        masterGain.connect(audioCtx.destination);
+
+        noiseSource.start();
+        updateTide();
+    }
+
+    function updateTide() {
+        if (!isPlaying) return;
+        const now = audioCtx.currentTime;
+        const speed = parseFloat(document.getElementById('speedSlider').value);
+        if (speed === 0) {
+            swellGain.gain.setTargetAtTime(0.8, now, 0.1);
+        } else {
+            const period = 1 / speed;
+            swellGain.gain.cancelScheduledValues(now);
+            swellGain.gain.exponentialRampToValueAtTime(0.9, now + (period / 4));
+            swellGain.gain.exponentialRampToValueAtTime(0.4, now + (3 * period / 4));
+        }
+        setTimeout(updateTide, 2000);
+    }
+
+    // --- ENCODER LOGIC: BUILDING A REAL WAV FILE ---
+    function bufferToWav(abuffer, len) {
+        let numOfChan = abuffer.numberOfChannels,
+            length = len * numOfChan * 2 + 44,
+            buffer = new ArrayBuffer(length),
+            view = new DataView(buffer),
+            channels = [], i, sample,
+            offset = 0,
+            pos = 0;
+
+        // Write WAV header
+        setUint32(0x46464952);                         // "RIFF"
+        setUint32(length - 8);                         // file length - 8
+        setUint32(0x45564157);                         // "WAVE"
+        setUint32(0x20746d66);                         // "fmt " chunk
+        setUint32(16);                                 // length = 16
+        setUint16(1);                                  // PCM (uncompressed)
+        setUint16(numOfChan);
+        setUint32(abuffer.sampleRate);
+        setUint32(abuffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+        setUint16(numOfChan * 2);                      // block-align
+        setUint16(16);                                 // 16-bit
+        setUint32(0x61746164);                         // "data" - chunk
+        setUint32(length - pos - 4);                   // chunk length
+
+        // Write interleaved samples
+        for(i = 0; i < abuffer.numberOfChannels; i++)
+            channels.push(abuffer.getChannelData(i));
+
+        while(pos < length) {
+            for(i = 0; i < numOfChan; i++) {             // interleave channels
+                sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
+                sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0; // scale to 16-bit signed int
+                view.setInt16(pos, sample, true);          // write 16-bit sample
+                pos += 2;
             }
-            setTimeout(updateTide, 2000);
+            offset++;
         }
 
-        function setPreset(softnessScale, speed) {
-            // Map 0.0-1.0 to our slider ranges
-            const freq = 100 + (700 * (1 - softnessScale));
-            document.getElementById('softnessSlider').value = freq;
-            document.getElementById('speedSlider').value = speed;
-            if (isPlaying) {
-                biquadFilter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
-            }
+        return new Blob([buffer], {type: "audio/wav"});
+
+        function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+        function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+    }
+
+    const downloadBtn = document.getElementById('downloadBtn');
+    downloadBtn.onclick = async () => {
+        if (!isPlaying) { alert("Start Tide first."); return; }
+        
+        const waveSpeed = parseFloat(document.getElementById('speedSlider').value);
+        const duration = waveSpeed > 0 ? (1 / waveSpeed) : 10;
+        
+        downloadBtn.innerText = "Encoding Pro WAV...";
+        downloadBtn.disabled = true;
+
+        // Offline Rendering: Generate the file mathematically for 100% loop accuracy
+        const offlineCtx = new OfflineAudioContext(1, audioCtx.sampleRate * duration, audioCtx.sampleRate);
+        
+        // Replicate the chain in the offline context
+        const source = offlineCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.loop = true;
+
+        const filter = offlineCtx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = biquadFilter.frequency.value;
+
+        const g = offlineCtx.createGain();
+        // Mimic the tide
+        g.gain.setValueAtTime(0.4, 0);
+        if (waveSpeed > 0) {
+            g.gain.exponentialRampToValueAtTime(0.9, duration / 4);
+            g.gain.exponentialRampToValueAtTime(0.4, 3 * duration / 4);
+            g.gain.exponentialRampToValueAtTime(0.4, duration);
         }
 
-        document.getElementById('playBtn').addEventListener('click', () => {
-            if (!isPlaying) {
-                if (!audioCtx) initAudio();
-                audioCtx.resume();
-                isPlaying = true;
-                document.getElementById('playBtn').innerText = "STOP TIDE";
-            } else {
-                audioCtx.suspend();
-                isPlaying = false;
-                document.getElementById('playBtn').innerText = "START TIDE";
-            }
-        });
+        source.connect(filter);
+        filter.connect(g);
+        g.connect(offlineCtx.destination);
+        source.start();
 
-        document.getElementById('softnessSlider').oninput = (e) => {
-            if (isPlaying) biquadFilter.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1);
-        };
+        const renderedBuffer = await offlineCtx.startRendering();
+        const wavBlob = bufferToWav(renderedBuffer, renderedBuffer.length);
+        
+        const url = URL.createObjectURL(wavBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'blunt_ocean_pro.wav';
+        a.click();
+        
+        downloadBtn.innerText = "RECORD & DOWNLOAD LOOP";
+        downloadBtn.disabled = false;
+    };
 
-        // --- RECORD & DOWNLOAD LOGIC ---
-        const downloadBtn = document.getElementById('downloadBtn');
-        downloadBtn.onclick = async () => {
-            if (!isPlaying) { alert("Please Start Tide first to record."); return; }
-            
-            const waveSpeed = parseFloat(document.getElementById('speedSlider').value);
-            const loopDurationMs = waveSpeed > 0 ? (1 / waveSpeed) * 1000 : 10000;
-            const recordTime = Math.min(loopDurationMs, 30000); // 1 full cycle, max 30s
-
-            const dest = audioCtx.createMediaStreamDestination();
-            masterGain.connect(dest);
-            
-            const mediaRecorder = new MediaRecorder(dest.stream);
-            let chunks = [];
-
-            downloadBtn.innerText = `Recording (${(recordTime/1000).toFixed(1)}s)...`;
-            downloadBtn.disabled = true;
-
-            mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'audio/wav' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'blunt_ocean_loop.wav';
-                a.click();
-                
-                chunks = [];
-                downloadBtn.innerText = "RECORD & DOWNLOAD LOOP";
-                downloadBtn.disabled = false;
-            };
-
-            mediaRecorder.start();
-            setTimeout(() => mediaRecorder.stop(), recordTime);
-        };
-    </script>
+    // --- Rest of your UI handlers ---
+    document.getElementById('playBtn').addEventListener('click', () => {
+        if (!isPlaying) { if (!audioCtx) initAudio(); audioCtx.resume(); isPlaying = true; document.getElementById('playBtn').innerText = "STOP TIDE"; }
+        else { audioCtx.suspend(); isPlaying = false; document.getElementById('playBtn').innerText = "START TIDE"; }
+    });
+    document.getElementById('softnessSlider').oninput = (e) => { if (isPlaying) biquadFilter.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1); };
+    function setPreset(softnessScale, speed) {
+        const freq = 100 + (700 * (1 - softnessScale));
+        document.getElementById('softnessSlider').value = freq;
+        document.getElementById('speedSlider').value = speed;
+        if (isPlaying) biquadFilter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
+    }
+</script>
 </body>
 </html>
