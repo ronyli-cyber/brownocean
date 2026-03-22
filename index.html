@@ -3,129 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blunt Ocean Machine</title>
+    <title>Blunt Ocean | Deep Sleep Shield</title>
     <style>
-        body { background: #0a0f14; color: #a0b0c0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: #161d26; padding: 2.5rem; border-radius: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); text-align: center; width: 340px; border: 1px solid #243140; }
-        h2 { margin-top: 0; color: #5dade2; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; font-size: 1.2rem; }
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #38bdf8;
+            --text-main: #f1f5f9;
+            --text-dim: #94a3b8;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        h1 { margin-bottom: 10px; color: var(--accent); }
+        .tagline { color: var(--text-dim); margin-bottom: 30px; font-size: 0.9em; }
+
+        .presets {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        .presets button {
+            background: #334155;
+            border: 1px solid #475569;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+
+        .presets button:hover { background: var(--accent); color: var(--bg-color); }
+
         .control-group { margin: 25px 0; text-align: left; }
-        label { font-size: 11px; text-transform: uppercase; color: #5d6d7e; display: block; margin-bottom: 8px; letter-spacing: 1px; }
-        input[type=range] { width: 100%; cursor: pointer; accent-color: #5dade2; background: #243140; height: 6px; border-radius: 5px; appearance: none; }
-        button { background: #2e86c1; border: none; color: white; padding: 20px; border-radius: 20px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; width: 100%; margin-top: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        button:hover { background: #3498db; transform: translateY(-2px); }
-        button.active { background: #cb4335; }
-        .status { margin-top: 20px; font-size: 12px; color: #34495e; font-style: italic; }
+        label { display: block; margin-bottom: 10px; font-weight: 500; color: var(--text-dim); }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .main-action {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: transform 0.1s;
+        }
+
+        #playBtn { background: var(--accent); color: var(--bg-color); }
+        #downloadBtn { 
+            background: transparent; 
+            border: 2px solid #22c55e; 
+            color: #22c55e; 
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+        #downloadBtn:disabled { opacity: 0.5; cursor: not-allowed; border-color: gray; color: gray; }
+
+        .about-section {
+            max-width: 600px;
+            margin-top: 50px;
+            text-align: left;
+            font-size: 0.9em;
+            color: var(--text-dim);
+            border-top: 1px solid #334155;
+            padding-top: 30px;
+        }
+
+        .about-section h2 { color: var(--text-main); font-size: 1.2em; }
+        .about-section b { color: var(--accent); }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>Ocean Shield</h2>
-    
-    <div class="control-group">
-        <label>Master Volume</label>
-        <input type="range" id="masterVol" min="0" max="1" step="0.01" value="0.5">
+    <div class="container">
+        <h1>Blunt Ocean</h1>
+        <p class="tagline">An Engineer's Shield for Deep Sleep</p>
+
+        <div class="presets">
+            <button onclick="setPreset(1.0, 0.08)">Deep Shield</button>
+            <button onclick="setPreset(0.65, 0.22)">Coastal Storm</button>
+            <button onclick="setPreset(0.95, 0.0)">Steady Rumble</button>
+        </div>
+
+        <div class="control-group">
+            <label>Softness (Low-Pass Filter)</label>
+            <input type="range" id="softnessSlider" min="100" max="800" value="350">
+        </div>
+
+        <div class="control-group">
+            <label>Wave Speed (Tide Cycle)</label>
+            <input type="range" id="speedSlider" min="0" max="0.3" step="0.01" value="0.12">
+        </div>
+
+        <button id="playBtn" class="main-action">START TIDE</button>
+        <button id="downloadBtn" class="main-action">RECORD & DOWNLOAD LOOP</button>
     </div>
 
-    <div class="control-group">
-        <label>Softness (Bluntness)</label>
-        <input type="range" id="softness" min="150" max="800" step="10" value="350">
+    <div class="about-section">
+        <h2>The Science of "Blunt" Noise</h2>
+        <p>Most white noise machines are too sharp. High-frequency sounds (hiss) alert the brain instead of soothing it. <b>Blunt Ocean</b> uses a 2nd-order Butterworth low-pass filter to aggressively roll off everything above 350Hz, creating a "Brownian" rumble that mimics the physical weight of water.</p>
+        
+        <h2>Why a Full Night's Sleep?</h2>
+        <p>Consistent, uninterrupted sleep allows the brain to complete <b>REM and Deep Sleep cycles</b>, which are critical for memory consolidation and clearing metabolic waste (glymphatic system). By masking sudden room noises—like a car door or a floor creak—this shield prevents the "startle response" that triggers micro-awakenings.</p>
+
+        <h2>Speaker Setup Tips</h2>
+        <ul>
+            <li><b>Boundary Loading:</b> Place your speaker (like a Google Home Mini) in a corner about 4 inches from the walls. This naturally amplifies the bass by 6dB.</li>
+            <li><b>Decoupling:</b> Place the speaker on a soft surface (a mousepad or towel) to prevent the table from buzzing, leaving only the "blunt" air vibrations.</li>
+            <li><b>Diffusion:</b> Point the speaker <i>away</i> from your bed. Let the sound bounce off the wall to create a more immersive, room-filling "blanket" effect.</li>
+        </ul>
     </div>
 
-    <div class="control-group">
-        <label>Wave Speed (Tide)</label>
-        <input type="range" id="waveSpeed" min="0.05" max="0.3" step="0.01" value="0.12">
-    </div>
+    <script>
+        let audioCtx;
+        let biquadFilter;
+        let swellGain;
+        let masterGain;
+        let isPlaying = false;
 
-    <button id="playBtn">START TIDE</button>
-    <div class="status" id="status">Ready for Deep Sleep</div>
-</div>
-
-<script>
-    let audioCtx;
-    let isPlaying = false;
-    let bL, bR, lfo, bluntFilter, masterGain, swellNode;
-
-    const playBtn = document.getElementById('playBtn');
-    const masterSlider = document.getElementById('masterVol');
-    const softSlider = document.getElementById('softness');
-    const speedSlider = document.getElementById('waveSpeed');
-
-    function createBrownNode() {
-        const bufferSize = 4096;
-        let lastOut = 0.0;
-        const node = audioCtx.createScriptProcessor(bufferSize, 1, 1);
-        node.onaudioprocess = (e) => {
-            let output = e.outputBuffer.getChannelData(0);
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // 1. Noise Generation (Pink-ish/Brown)
+            const bufferSize = 2 * audioCtx.sampleRate;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            
+            let lastOut = 0.0;
             for (let i = 0; i < bufferSize; i++) {
-                let white = Math.random() * 2 - 1;
+                const white = Math.random() * 2 - 1;
                 output[i] = (lastOut + (0.02 * white)) / 1.02;
                 lastOut = output[i];
-                output[i] *= 5.0; // Richer base gain
+                output[i] *= 3.5; // Gain compensation
             }
-        };
-        return node;
-    }
 
-    playBtn.addEventListener('click', () => {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            noiseSource.loop = true;
 
-        if (!isPlaying) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            // 2. The "Blunt" Filter
+            biquadFilter = audioCtx.createBiquadFilter();
+            biquadFilter.type = "lowpass";
+            biquadFilter.frequency.value = document.getElementById('softnessSlider').value;
+
+            // 3. The Swell (Tide)
+            swellGain = audioCtx.createGain();
             
-            // 1. Stereo Brown Noise
-            bL = createBrownNode();
-            bR = createBrownNode();
-            const merger = audioCtx.createChannelMerger(2);
-
-            // 2. Blunt Filter (Removes high-end sharpness)
-            bluntFilter = audioCtx.createBiquadFilter();
-            bluntFilter.type = "lowpass";
-            bluntFilter.frequency.value = softSlider.value;
-            bluntFilter.Q.value = 0.5; // Natural roll-off
-
-            // 3. Swell Logic (The Breathing Ocean)
-            swellNode = audioCtx.createGain();
-            lfo = audioCtx.createOscillator();
-            const lfoGain = audioCtx.createGain();
-            
-            lfo.type = 'sine';
-            lfo.frequency.value = speedSlider.value;
-            lfoGain.gain.value = 0.4; // The depth of the volume dip
-            
-            lfo.connect(lfoGain);
-            lfoGain.connect(swellNode.gain);
-            // Default swellNode.gain is 1.0, LFO oscillates it between 0.6 and 1.4
-
             // 4. Master Output
             masterGain = audioCtx.createGain();
-            masterGain.gain.value = masterSlider.value;
+            masterGain.gain.value = 0.8;
 
-            // Chain everything
-            bL.connect(merger, 0, 0);
-            bR.connect(merger, 0, 1);
-            merger.connect(bluntFilter);
-            bluntFilter.connect(swellNode);
-            swellNode.connect(masterGain);
+            noiseSource.connect(biquadFilter);
+            biquadFilter.connect(swellGain);
+            swellGain.connect(masterGain);
             masterGain.connect(audioCtx.destination);
 
-            lfo.start();
-            
-            playBtn.textContent = "STOP TIDE";
-            playBtn.classList.add('active');
-            isPlaying = true;
-        } else {
-            bL.disconnect(); bR.disconnect(); lfo.stop();
-            isPlaying = false;
-            playBtn.textContent = "START TIDE";
-            playBtn.classList.remove('active');
+            noiseSource.start();
+            updateTide();
         }
-    });
 
-    // Real-time Controls
-    masterSlider.oninput = () => { if(masterGain) masterGain.gain.value = masterSlider.value; };
-    softSlider.oninput = () => { if(bluntFilter) bluntFilter.frequency.value = softSlider.value; };
-    speedSlider.oninput = () => { if(lfo) lfo.frequency.value = speedSlider.value; };
-</script>
+        function updateTide() {
+            if (!isPlaying) return;
+            const now = audioCtx.currentTime;
+            const speed = parseFloat(document.getElementById('speedSlider').value);
+            
+            if (speed === 0) {
+                swellGain.gain.setTargetAtTime(0.8, now, 0.1);
+            } else {
+                const period = 1 / speed;
+                // Create a smooth oscillation for the tide
+                swellGain.gain.cancelScheduledValues(now);
+                for (let i = 0; i < 10; i++) {
+                    const t = i * (period / 2);
+                    const val = i % 2 === 0 ? 0.9 : 0.4;
+                    swellGain.gain.exponentialRampToValueAtTime(val, now + t);
+                }
+            }
+            setTimeout(updateTide, 2000);
+        }
+
+        function setPreset(softnessScale, speed) {
+            // Map 0.0-1.0 to our slider ranges
+            const freq = 100 + (700 * (1 - softnessScale));
+            document.getElementById('softnessSlider').value = freq;
+            document.getElementById('speedSlider').value = speed;
+            if (isPlaying) {
+                biquadFilter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
+            }
+        }
+
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (!isPlaying) {
+                if (!audioCtx) initAudio();
+                audioCtx.resume();
+                isPlaying = true;
+                document.getElementById('playBtn').innerText = "STOP TIDE";
+            } else {
+                audioCtx.suspend();
+                isPlaying = false;
+                document.getElementById('playBtn').innerText = "START TIDE";
+            }
+        });
+
+        document.getElementById('softnessSlider').oninput = (e) => {
+            if (isPlaying) biquadFilter.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1);
+        };
+
+        // --- RECORD & DOWNLOAD LOGIC ---
+        const downloadBtn = document.getElementById('downloadBtn');
+        downloadBtn.onclick = async () => {
+            if (!isPlaying) { alert("Please Start Tide first to record."); return; }
+            
+            const waveSpeed = parseFloat(document.getElementById('speedSlider').value);
+            const loopDurationMs = waveSpeed > 0 ? (1 / waveSpeed) * 1000 : 10000;
+            const recordTime = Math.min(loopDurationMs, 30000); // 1 full cycle, max 30s
+
+            const dest = audioCtx.createMediaStreamDestination();
+            masterGain.connect(dest);
+            
+            const mediaRecorder = new MediaRecorder(dest.stream);
+            let chunks = [];
+
+            downloadBtn.innerText = `Recording (${(recordTime/1000).toFixed(1)}s)...`;
+            downloadBtn.disabled = true;
+
+            mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'audio/wav' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'blunt_ocean_loop.wav';
+                a.click();
+                
+                chunks = [];
+                downloadBtn.innerText = "RECORD & DOWNLOAD LOOP";
+                downloadBtn.disabled = false;
+            };
+
+            mediaRecorder.start();
+            setTimeout(() => mediaRecorder.stop(), recordTime);
+        };
+    </script>
 </body>
 </html>
