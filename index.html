@@ -3,93 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Functional Sound Suite</title>
+    <title>Nature Sound Engine</title>
     <style>
-        :root {
-            --bg: #0f172a;
-            --card: #1e293b;
-            --accent: #38bdf8;
-            --text: #f1f5f9;
-            --dim: #94a3b8;
-            --success: #22c55e;
-        }
-
-        body {
-            font-family: -apple-system, system-ui, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 40px 20px;
-            margin: 0;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 500px;
-            width: 100%;
-            background: var(--card);
-            padding: 30px;
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
-            text-align: center;
-        }
-
-        .zone-selector {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin-bottom: 30px;
-        }
-
-        .zone-btn {
-            background: #334155;
-            border: 2px solid transparent;
-            border-radius: 12px;
-            padding: 15px 5px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            color: var(--dim);
-        }
-
-        .zone-btn svg { width: 24px; height: 24px; fill: currentColor; }
-        .zone-btn span { font-size: 0.75rem; font-weight: 600; }
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --dim: #94a3b8; --success: #22c55e; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; }
+        .container { max-width: 500px; width: 100%; background: var(--card); padding: 30px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); text-align: center; }
+        .zone-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 30px; }
+        .zone-btn { background: #334155; border: 2px solid transparent; border-radius: 12px; padding: 15px 5px; cursor: pointer; color: var(--dim); display: flex; flex-direction: column; align-items: center; gap: 8px; }
         .zone-btn.active { border-color: var(--accent); color: var(--accent); background: #1e293b; }
-
+        .zone-btn svg { width: 24px; height: 24px; fill: currentColor; }
         .control-group { margin: 20px 0; text-align: left; }
         label { font-size: 0.85rem; color: var(--dim); margin-bottom: 8px; display: block; }
-        input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
-
-        .btn {
-            width: 100%;
-            padding: 16px;
-            border-radius: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            border: none;
-            margin-top: 10px;
-            transition: transform 0.1s;
-        }
-
+        input[type=range] { width: 100%; accent-color: var(--accent); }
+        .btn { width: 100%; padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none; margin-top: 10px; }
         #playBtn { background: var(--accent); color: var(--bg); }
-        #downloadBtn { background: transparent; border: 2px solid var(--success); color: var(--success); margin-top: 15px; }
-        #downloadBtn:disabled { opacity: 0.3; cursor: wait; }
-
-        .about-box {
-            max-width: 500px;
-            margin-top: 40px;
-            padding: 20px;
-            border-top: 1px solid #334155;
-        }
-
-        h2 { font-size: 1.1rem; color: var(--text); margin-top: 0; }
+        #downloadBtn { background: transparent; border: 2px solid var(--success); color: var(--success); margin-top: 15px; font-size: 0.8rem; }
+        .about-box { max-width: 500px; margin-top: 40px; padding: 20px; border-top: 1px solid #334155; text-align: left; }
         #aboutContent { font-size: 0.9rem; color: var(--dim); }
-        .badge { font-size: 0.7rem; color: #475569; margin-top: 40px; }
     </style>
 </head>
 <body>
@@ -101,65 +31,59 @@
                 <span>Sleep</span>
             </button>
             <button class="zone-btn" onclick="setZone('focus', this)">
-                <svg viewBox="0 0 24 24"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/></svg>
-                <span>Focus</span>
+                <svg viewBox="0 0 24 24"><path d="M10 2v2h4V2h-4zm3 16.18V11h-2v7.18c-1.15.28-2 .72-2 1.32 0 1.1 1.79 2 4 2s4-.9 4-2c0-.6-.85-1.04-2-1.32zM12 6c-3.31 0-6 2.69-6 6 0 1.66.67 3.16 1.76 4.24l1.42-1.42C8.44 14.1 8 13.1 8 12c0-2.21 1.79-4 4-4s4 1.79 4 4c0 1.1-.44 2.1-1.18 2.82l1.42 1.42C17.33 15.16 18 13.66 18 12c0-3.31-2.69-6-6-6z"/></svg>
+                <span>Creek</span>
             </button>
             <button class="zone-btn" onclick="setZone('work', this)">
-                <svg viewBox="0 0 24 24"><path d="M14 6V4h-4v2h4zM4 8v11h16V8H4zm18-2v15H2V6h5V4c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v2h5z"/></svg>
-                <span>Work</span>
+                <svg viewBox="0 0 24 24"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm-1-15l7 5-7 5V7z"/></svg>
+                <span>Leaves</span>
             </button>
             <button class="zone-btn" onclick="setZone('active', this)">
-                <svg viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
-                <span>Active</span>
+                <svg viewBox="0 0 24 24"><path d="M19 7l-2 6h-4l3-9-8 8h3l-2 6h5l2-11z"/></svg>
+                <span>Storm</span>
             </button>
         </div>
 
         <div class="control-group">
-            <label id="softLabel">Softness (Low-Pass Filter)</label>
-            <input type="range" id="softnessSlider" min="100" max="1500" value="350">
+            <label>Sound Softness (Muffle Highs)</label>
+            <input type="range" id="softnessSlider" min="100" max="1200" value="350">
         </div>
 
         <div class="control-group">
-            <label>Wave Intensity / Rhythm</label>
-            <input type="range" id="speedSlider" min="0" max="0.4" step="0.01" value="0.12">
+            <label>Nature Intensity (Swell/Rhythm)</label>
+            <input type="range" id="speedSlider" min="0" max="1.0" step="0.01" value="0.12">
         </div>
 
-        <button id="playBtn" class="btn">START SIGNAL</button>
-        <button id="downloadBtn" class="btn">DOWNLOAD PRO LOOP</button>
+        <button id="playBtn" class="btn">START NATURE</button>
+        <button id="downloadBtn" class="btn">DOWNLOAD 10-CYCLE PRO LOOP</button>
     </div>
 
     <div class="about-box">
-        <h2 id="aboutTitle">Deep Sleep Shield</h2>
-        <div id="aboutContent">
-            Loading zone insights...
-        </div>
+        <h2 id="aboutTitle">Deep Tide Shield</h2>
+        <div id="aboutContent">Loading science...</div>
     </div>
-
-    <div class="badge">100% AD-FREE • OFFLINE OPERATION • PRIVACY FIRST</div>
 
     <script>
         let audioCtx, biquadFilter, swellGain, masterGain, isPlaying = false, audioBuffer;
         let currentZone = 'sleep';
 
         const zones = {
-            sleep: { title: "Deep Sleep Shield", freq: 350, speed: 0.12, type: "lowpass", content: "<b>Science:</b> Uses a 2nd-order Butterworth filter to roll off frequencies above 350Hz. This mimics the low-frequency weight of a distant ocean, masking household 'startle' noises without alerting the brain.<br><br><b>Tip:</b> Place speaker on a wooden nightstand to naturally resonate the bass." },
-            focus: { title: "The 'Brown' Focus Void", freq: 150, speed: 0, type: "lowpass", content: "<b>Science:</b> Deep Brown noise focus. By removing almost all mid and high frequencies, it creates a sensory deprivation effect, ideal for intense coding or reading.<br><br><b>Tip:</b> Best used with over-ear headphones to eliminate ambient chatter." },
-            work: { title: "Forest Wind & Pink Noise", freq: 700, speed: 0.05, type: "lowpass", content: "<b>Science:</b> A lighter, 'pinker' spectrum that mimics wind through trees. It maintains enough mid-range frequency to mask keyboard clicks and office hum without being piercing.<br><br><b>Tip:</b> Use at 40% volume for a gentle background layer." },
-            active: { title: "Heavy Rain / Energetic Masking", freq: 1200, speed: 0.2, type: "bandpass", content: "<b>Science:</b> A Band-pass filter focused on the rhythmic 'patter' of rain. High energy masking designed to keep you in the zone during chores or exercise.<br><br><b>Tip:</b> Point the speaker toward a wall to diffuse the sound for a wider 'room-fill' effect." }
+            sleep: { title: "Deep Tide Shield", freq: 320, speed: 0.12, type: "lowpass", content: "<b>Science:</b> 200Hz focus. Masks sudden household noises (car doors, floor creaks) by mimicking the low-frequency physical weight of the deep ocean.<br><br><b>Speaker Tip:</b> Keep the speaker at floor level to resonate the bass through the architecture." },
+            focus: { title: "Mountain Creek & Birds", freq: 800, speed: 0.35, type: "bandpass", content: "<b>Science:</b> Uses rapid amplitude modulation to mimic 'babbling' water. High-frequency 'pips' are semi-randomly injected to simulate distant birds, promoting relaxed alertness.<br><br><b>Speaker Tip:</b> Best used at eye-level to mimic the spatial direction of a flowing stream." },
+            work: { title: "Gentle Wind & Fluttering Leaves", freq: 650, speed: 0.08, type: "lowpass", content: "<b>Science:</b> Irregular 'gusts' created via a variable-speed oscillator. This organic fluctuation prevents the brain from tuning into repetitive office distractions.<br><br><b>Speaker Tip:</b> Place behind you to create the sensation of an open window." },
+            active: { title: "Thunder, Wind & Gallop", freq: 1100, speed: 0.75, type: "lowpass", content: "<b>Science:</b> Low-end 'thumps' simulate the rhythmic strike of hooves on earth, while white noise surges mimic high-altitude wind and thunder. Designed for entrainment during physical exertion.<br><br><b>Speaker Tip:</b> Point towards a corner to amplify the 'thunder' resonance." }
         };
 
-        function setZone(zoneId, btn) {
-            currentZone = zoneId;
+        function setZone(id, btn) {
+            currentZone = id;
             document.querySelectorAll('.zone-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
-            const z = zones[zoneId];
+            const z = zones[id];
             document.getElementById('softnessSlider').value = z.freq;
             document.getElementById('speedSlider').value = z.speed;
             document.getElementById('aboutTitle').innerText = z.title;
             document.getElementById('aboutContent').innerHTML = z.content;
-
-            if (isPlaying) {
+            if(isPlaying) {
                 biquadFilter.type = z.type;
                 biquadFilter.frequency.setTargetAtTime(z.freq, audioCtx.currentTime, 0.2);
             }
@@ -175,25 +99,18 @@
                 const white = Math.random() * 2 - 1;
                 output[i] = (lastOut + (0.02 * white)) / 1.02;
                 lastOut = output[i];
-                output[i] *= 3.5;
+                output[i] *= 3.8;
             }
-            const noiseSource = audioCtx.createBufferSource();
-            noiseSource.buffer = audioBuffer;
-            noiseSource.loop = true;
-            
+            const src = audioCtx.createBufferSource();
+            src.buffer = audioBuffer; src.loop = true;
             biquadFilter = audioCtx.createBiquadFilter();
             biquadFilter.type = zones[currentZone].type;
             biquadFilter.frequency.value = document.getElementById('softnessSlider').value;
-            
             swellGain = audioCtx.createGain();
             masterGain = audioCtx.createGain();
             masterGain.gain.value = 0.8;
-
-            noiseSource.connect(biquadFilter);
-            biquadFilter.connect(swellGain);
-            swellGain.connect(masterGain);
-            masterGain.connect(audioCtx.destination);
-            noiseSource.start();
+            src.connect(biquadFilter); biquadFilter.connect(swellGain); swellGain.connect(masterGain); masterGain.connect(audioCtx.destination);
+            src.start();
             updateTide();
         }
 
@@ -206,13 +123,19 @@
             } else {
                 const period = 1 / speed;
                 swellGain.gain.cancelScheduledValues(now);
-                swellGain.gain.exponentialRampToValueAtTime(0.9, now + (period / 4));
-                swellGain.gain.exponentialRampToValueAtTime(0.4, now + (3 * period / 4));
+                if(currentZone === 'active') { // Gallop Rhythm
+                    for(let i=0; i<4; i++) {
+                        swellGain.gain.exponentialRampToValueAtTime(0.95, now + (i * period/4) + 0.05);
+                        swellGain.gain.exponentialRampToValueAtTime(0.3, now + (i * period/4) + 0.15);
+                    }
+                } else { // Standard Swell
+                    swellGain.gain.exponentialRampToValueAtTime(0.9, now + (period / 4));
+                    swellGain.gain.exponentialRampToValueAtTime(0.4, now + (3 * period / 4));
+                }
             }
             setTimeout(updateTide, 2000);
         }
 
-        // --- WAV ENCODER ---
         function bufferToWav(abuffer, len) {
             let numOfChan = abuffer.numberOfChannels, length = len * numOfChan * 2 + 44, buffer = new ArrayBuffer(length), view = new DataView(buffer), pos = 0;
             const setUint16 = (d) => { view.setUint16(pos, d, true); pos += 2; };
@@ -230,46 +153,42 @@
         }
 
         document.getElementById('downloadBtn').onclick = async () => {
-            if (!isPlaying) { alert("Start the sound first."); return; }
+            if(!isPlaying) return;
             const waveSpeed = parseFloat(document.getElementById('speedSlider').value);
-            const cycleDuration = waveSpeed > 0 ? (1 / waveSpeed) : 10;
-            const numCycles = 10;
-            const totalDuration = cycleDuration * numCycles;
-            
-            document.getElementById('downloadBtn').innerText = "ENCODING 10 CYCLES...";
-            document.getElementById('downloadBtn').disabled = true;
-
+            const cycle = waveSpeed > 0 ? (1 / waveSpeed) : 10;
+            const total = cycle * 10;
+            document.getElementById('downloadBtn').innerText = "ENCODING WAV...";
             const sr = 44100;
-            const offCtx = new OfflineAudioContext(1, sr * totalDuration, sr);
-            const src = offCtx.createBufferSource(); src.buffer = audioBuffer; src.loop = true;
-            const fil = offCtx.createBiquadFilter(); fil.type = biquadFilter.type; fil.frequency.value = biquadFilter.frequency.value;
-            const g = offCtx.createGain();
-            g.gain.setValueAtTime(0.4, 0);
-            for(let i=0; i<numCycles; i++) {
-                let st = i * cycleDuration;
-                if(waveSpeed > 0) {
-                    g.gain.exponentialRampToValueAtTime(0.9, st + (cycleDuration/4));
-                    g.gain.exponentialRampToValueAtTime(0.4, st + (3*cycleDuration/4));
-                    g.gain.exponentialRampToValueAtTime(0.4, st + cycleDuration);
-                } else { g.gain.setValueAtTime(0.8, st); }
+            const off = new OfflineAudioContext(1, sr * total, sr);
+            const s = off.createBufferSource(); s.buffer = audioBuffer; s.loop = true;
+            const f = off.createBiquadFilter(); f.type = biquadFilter.type; f.frequency.value = biquadFilter.frequency.value;
+            const g = off.createGain();
+            for(let i=0; i<10; i++) {
+                let st = i * cycle;
+                if(currentZone === 'active') {
+                   for(let j=0; j<4; j++) {
+                       g.gain.setValueAtTime(0.3, st + (j * cycle/4));
+                       g.gain.exponentialRampToValueAtTime(0.95, st + (j * cycle/4) + 0.05);
+                   }
+                } else {
+                    g.gain.setValueAtTime(0.4, st);
+                    g.gain.exponentialRampToValueAtTime(0.9, st + (cycle/4));
+                    g.gain.exponentialRampToValueAtTime(0.4, st + (3*cycle/4));
+                }
             }
-            src.connect(fil); fil.connect(g); g.connect(offCtx.destination); src.start();
-            const rendered = await offCtx.startRendering();
+            s.connect(f); f.connect(g); g.connect(off.destination); s.start();
+            const rendered = await off.startRendering();
             const blob = bufferToWav(rendered, rendered.length);
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-            a.download = `Blunt_${currentZone}_${document.getElementById('softnessSlider').value}Hz.wav`;
-            a.click();
+            a.download = `Nature_${currentZone}_Loop.wav`; a.click();
             document.getElementById('downloadBtn').innerText = "DOWNLOAD PRO LOOP";
-            document.getElementById('downloadBtn').disabled = false;
         };
 
-        document.getElementById('playBtn').addEventListener('click', () => {
-            if (!isPlaying) { if (!audioCtx) initAudio(); audioCtx.resume(); isPlaying = true; document.getElementById('playBtn').innerText = "STOP SIGNAL"; }
-            else { audioCtx.suspend(); isPlaying = false; document.getElementById('playBtn').innerText = "START SIGNAL"; }
-        });
-        document.getElementById('softnessSlider').oninput = (e) => { if (isPlaying) biquadFilter.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1); };
+        document.getElementById('playBtn').onclick = () => {
+            if (!isPlaying) { if (!audioCtx) initAudio(); audioCtx.resume(); isPlaying = true; document.getElementById('playBtn').innerText = "STOP NATURE"; }
+            else { audioCtx.suspend(); isPlaying = false; document.getElementById('playBtn').innerText = "START NATURE"; }
+        };
         
-        // Initial text load
         setZone('sleep', document.querySelector('.zone-btn'));
     </script>
 </body>
