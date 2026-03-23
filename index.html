@@ -248,53 +248,73 @@
     }
 
     const downloadBtn = document.getElementById('downloadBtn');
-    downloadBtn.onclick = async () => {
-        if (!isPlaying) { alert("Start Tide first."); return; }
-        
-        const waveSpeed = parseFloat(document.getElementById('speedSlider').value);
-        const duration = waveSpeed > 0 ? (1 / waveSpeed) : 10;
-        
-        downloadBtn.innerText = "Encoding Pro WAV...";
-        downloadBtn.disabled = true;
 
-        // Offline Rendering: Generate the file mathematically for 100% loop accuracy
-        const offlineCtx = new OfflineAudioContext(1, audioCtx.sampleRate * duration, audioCtx.sampleRate);
-        
-        // Replicate the chain in the offline context
-        const source = offlineCtx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.loop = true;
+downloadBtn.onclick = async () => {
+    if (!isPlaying) { alert("Please Start Tide first to record."); return; }
+    
+    const waveSpeed = parseFloat(document.getElementById('speedSlider').value);
+    
+    // 1. Calculate the duration of ONE perfect cycle
+    // If speed is 0 (Steady Rumble), we'll use a standard 10s loop
+    const cycleDuration = waveSpeed > 0 ? (1 / waveSpeed) : 10;
+    
+    // 2. We will bake 10 cycles into the file for stability
+    const numCycles = 10;
+    const totalDuration = cycleDuration * numCycles;
 
-        const filter = offlineCtx.createBiquadFilter();
-        filter.type = "lowpass";
-        filter.frequency.value = biquadFilter.frequency.value;
+    downloadBtn.innerText = `Baking 10 Cycles (${totalDuration.toFixed(1)}s)...`;
+    downloadBtn.disabled = true;
 
-        const g = offlineCtx.createGain();
-        // Mimic the tide
-        g.gain.setValueAtTime(0.4, 0);
+    // 3. Render the loop at high fidelity (44.1kHz)
+    const sampleRate = 44100;
+    const offlineCtx = new OfflineAudioContext(1, sampleRate * totalDuration, sampleRate);
+    
+    // Reconstruct the "Blunt Ocean" signal chain
+    const source = offlineCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.loop = true;
+
+    const filter = offlineCtx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = biquadFilter.frequency.value;
+
+    const g = offlineCtx.createGain();
+    
+    // Create the "Swell" automation for the entire 10-cycle duration
+    g.gain.setValueAtTime(0.4, 0);
+    for (let i = 0; i < numCycles; i++) {
+        let startTime = i * cycleDuration;
         if (waveSpeed > 0) {
-            g.gain.exponentialRampToValueAtTime(0.9, duration / 4);
-            g.gain.exponentialRampToValueAtTime(0.4, 3 * duration / 4);
-            g.gain.exponentialRampToValueAtTime(0.4, duration);
+            // Perfect mathematical sine-like swell per cycle
+            g.gain.exponentialRampToValueAtTime(0.9, startTime + (cycleDuration / 4));
+            g.gain.exponentialRampToValueAtTime(0.4, startTime + (3 * cycleDuration / 4));
+            g.gain.exponentialRampToValueAtTime(0.4, startTime + cycleDuration);
+        } else {
+            g.gain.setValueAtTime(0.8, startTime);
         }
+    }
 
-        source.connect(filter);
-        filter.connect(g);
-        g.connect(offlineCtx.destination);
-        source.start();
+    source.connect(filter);
+    filter.connect(g);
+    g.connect(offlineCtx.destination);
+    source.start();
 
-        const renderedBuffer = await offlineCtx.startRendering();
-        const wavBlob = bufferToWav(renderedBuffer, renderedBuffer.length);
-        
-        const url = URL.createObjectURL(wavBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'blunt_ocean_pro.wav';
-        a.click();
-        
-        downloadBtn.innerText = "RECORD & DOWNLOAD LOOP";
-        downloadBtn.disabled = false;
-    };
+    // 4. Render and Encode to Pro WAV
+    const renderedBuffer = await offlineCtx.startRendering();
+    const wavBlob = bufferToWav(renderedBuffer, renderedBuffer.length);
+    
+    const url = URL.createObjectURL(wavBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    
+    // Filename includes the "Softness" setting for your records
+    const softness = document.getElementById('softnessSlider').value;
+    a.download = `BluntOcean_Cycle10_S${softness}Hz.wav`;
+    a.click();
+    
+    downloadBtn.innerText = "RECORD & DOWNLOAD LOOP";
+    downloadBtn.disabled = false;
+};
 
     // --- Rest of your UI handlers ---
     document.getElementById('playBtn').addEventListener('click', () => {
