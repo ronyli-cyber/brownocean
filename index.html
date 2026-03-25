@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nature Synthesis Engine</title>
+    <title>Nature Sound Suite</title>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --dim: #94a3b8; --success: #22c55e; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; }
@@ -18,8 +18,6 @@
         .btn { width: 100%; padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none; margin-top: 10px; }
         #playBtn { background: var(--accent); color: var(--bg); }
         #downloadBtn { background: transparent; border: 2px solid var(--success); color: var(--success); margin-top: 15px; font-size: 0.8rem; }
-        .about-box { max-width: 500px; margin-top: 40px; padding: 20px; border-top: 1px solid #334155; text-align: left; }
-        #aboutContent { font-size: 0.9rem; color: var(--dim); }
     </style>
 </head>
 <body>
@@ -28,202 +26,187 @@
         <div class="zone-selector">
             <button class="zone-btn active" onclick="setZone('sleep', this)">
                 <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
-                <span>深海睡午</span>
+                <span>Ocean</span>
             </button>
             <button class="zone-btn" onclick="setZone('creek', this)">
                 <svg viewBox="0 0 24 24"><path d="M10 2v2h4V2h-4zm3 16.18V11h-2v7.18c-1.15.28-2 .72-2 1.32 0 1.1 1.79 2 4 2s4-.9 4-2c0-.6-.85-1.04-2-1.32z"/></svg>
-                <span>溪流鸟鸣</span>
+                <span>Creek</span>
             </button>
-            <button class="zone-btn" onclick="setZone('leaves', this)">
+            <button class="zone-btn" onclick="setZone('work', this)">
                 <svg viewBox="0 0 24 24"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z"/></svg>
-                <span>林间微风</span>
+                <span>Leaves</span>
             </button>
             <button class="zone-btn" onclick="setZone('active', this)">
                 <svg viewBox="0 0 24 24"><path d="M19 7l-2 6h-4l3-9-8 8h3l-2 6h5l2-11z"/></svg>
-                <span>骏马风暴</span>
+                <span>Gallop</span>
             </button>
         </div>
 
         <div class="control-group">
-            <label>声音柔和度 (过滤高频)</label>
+            <label>Softness (Filter Cutoff)</label>
             <input type="range" id="softnessSlider" min="100" max="2000" value="400">
         </div>
 
         <div class="control-group">
-            <label>自然节奏 (波浪/节奏感)</label>
+            <label>Intensity (Swell/Rhythm)</label>
             <input type="range" id="speedSlider" min="0" max="1.0" step="0.01" value="0.12">
         </div>
 
-        <button id="playBtn" class="btn">开启自然之声</button>
-        <button id="downloadBtn" class="btn">下载 10 周期无缝循环</button>
-    </div>
-
-    <div class="about-box">
-        <h2 id="aboutTitle">深海睡午 (Deep Tide)</h2>
-        <div id="aboutContent">正在加载原理说明...</div>
+        <button id="playBtn" class="btn">START SOUND</button>
+        <button id="downloadBtn" class="btn">DOWNLOAD PRO WAV</button>
     </div>
 
     <script>
         let audioCtx, masterGain, isPlaying = false;
-        let biquadFilter, noiseSource, swellGain;
-        let birdTimer, gallopTimer, creekTimer;
+        let noiseNode, filterNode, swellNode;
         let currentZone = 'sleep';
-
-        const zones = {
-            sleep: { title: "深海睡午", freq: 350, speed: 0.12, content: "<b>原理:</b> 低频棕色噪音模拟深海压力感。大波长潮汐（0.12Hz）有助于引导呼吸频率，进入深度睡眠。" },
-            creek: { title: "溪流鸟鸣", freq: 1200, speed: 0.4, content: "<b>原理:</b> 多个 1kHz-3kHz 带通滤波器模拟流水撞击声。随机正弦波滑音（Bird Chirps）刺激轻微警觉度，适合专注学习。" },
-            leaves: { title: "林间微风", freq: 600, speed: 0.08, content: "<b>原理:</b> 随机振幅调制（Erratic Swell）模拟风吹过叶片的摩擦声。舒缓神经压力，适合轻量工作。" },
-            active: { title: "骏马风暴", freq: 1500, speed: 0.8, content: "<b>原理:</b> 100Hz 低频包络脉冲模拟马蹄声，配合高增益白噪音模拟狂风。提供运动时的节奏驱动感。" }
-        };
-
-        function setZone(id, btn) {
-            currentZone = id;
-            document.querySelectorAll('.zone-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            const z = zones[id];
-            document.getElementById('softnessSlider').value = z.freq;
-            document.getElementById('speedSlider').value = z.speed;
-            document.getElementById('aboutTitle').innerText = z.title;
-            document.getElementById('aboutContent').innerHTML = z.content;
-            
-            if(isPlaying) stopEffects();
-        }
+        let birdTimer, gallopTimer;
 
         function initAudio() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             masterGain = audioCtx.createGain();
-            masterGain.gain.value = 0.8;
+            masterGain.gain.value = 0.7;
             masterGain.connect(audioCtx.destination);
             startEngine();
         }
 
         function startEngine() {
-            // 基础底噪
+            // White Noise Base
             const bufferSize = audioCtx.sampleRate * 2;
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
 
-            noiseSource = audioCtx.createBufferSource();
-            noiseSource.buffer = buffer;
-            noiseSource.loop = true;
+            noiseNode = audioCtx.createBufferSource();
+            noiseNode.buffer = buffer;
+            noiseNode.loop = true;
 
-            biquadFilter = audioCtx.createBiquadFilter();
-            biquadFilter.type = (currentZone === 'creek') ? 'bandpass' : 'lowpass';
-            biquadFilter.frequency.value = document.getElementById('softnessSlider').value;
+            filterNode = audioCtx.createBiquadFilter();
+            filterNode.type = (currentZone === 'creek') ? 'bandpass' : 'lowpass';
+            filterNode.frequency.value = document.getElementById('softnessSlider').value;
 
-            swellGain = audioCtx.createGain();
+            swellNode = audioCtx.createGain();
             
-            noiseSource.connect(biquadFilter);
-            biquadFilter.connect(swellGain);
-            swellGain.connect(masterGain);
-            noiseSource.start();
+            noiseNode.connect(filterNode);
+            filterNode.connect(swellNode);
+            swellNode.connect(masterGain);
+            noiseNode.start();
 
-            runEffects();
+            scheduleAutomation();
         }
 
-        function stopEffects() {
-            clearTimeout(birdTimer);
-            clearTimeout(gallopTimer);
-            clearTimeout(creekTimer);
-            if(noiseSource) {
-                noiseSource.stop();
-                noiseSource = null;
-            }
-            if(isPlaying) startEngine();
-        }
-
-        function runEffects() {
+        function scheduleAutomation() {
+            if (!isPlaying) return;
             const now = audioCtx.currentTime;
             const speed = parseFloat(document.getElementById('speedSlider').value);
             
-            // 1. 潮汐/节奏控制
+            // 1. Swell Logic
             if (speed > 0) {
                 const period = 1 / speed;
-                swellGain.gain.cancelScheduledValues(now);
-                swellGain.gain.exponentialRampToValueAtTime(0.9, now + period/4);
-                swellGain.gain.exponentialRampToValueAtTime(0.3, now + 3*period/4);
-                swellGain.gain.exponentialRampToValueAtTime(0.3, now + period);
-            } else {
-                swellGain.gain.setTargetAtTime(0.7, now, 0.1);
+                swellNode.gain.cancelScheduledValues(now);
+                swellNode.gain.exponentialRampToValueAtTime(0.8, now + period/4);
+                swellNode.gain.exponentialRampToValueAtTime(0.2, now + 3*period/4);
+                swellNode.gain.exponentialRampToValueAtTime(0.2, now + period);
             }
 
-            // 2. 特殊音效触发
-            if (currentZone === 'creek') playBird();
-            if (currentZone === 'active') playGallop();
-            
-            creekTimer = setTimeout(runEffects, 2000);
+            // 2. Creek "Babbling" - Fast volume jitter
+            if (currentZone === 'creek') {
+                for(let i=0; i<20; i++) {
+                    swellNode.gain.setTargetAtTime(Math.random() * 0.4 + 0.4, now + i*0.1, 0.05);
+                }
+            }
+
+            setTimeout(scheduleAutomation, 2000);
         }
 
-        // --- 合成器：鸟鸣 ---
         function playBird() {
-            if(!isPlaying) return;
+            if (!isPlaying || (currentZone !== 'creek' && currentZone !== 'work')) return;
+            
             const osc = audioCtx.createOscillator();
             const g = audioCtx.createGain();
-            const freq = 3000 + Math.random() * 2000;
+            const freq = 2500 + Math.random() * 1500;
             
             osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(freq + 500, audioCtx.currentTime + 0.1);
+            osc.frequency.exponentialRampToValueAtTime(freq + 600, audioCtx.currentTime + 0.1);
             
             g.gain.setValueAtTime(0, audioCtx.currentTime);
-            g.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 0.05);
-            g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+            g.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 0.05);
+            g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
             
             osc.connect(g);
             g.connect(masterGain);
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.2);
+            osc.stop(audioCtx.currentTime + 0.3);
             
-            birdTimer = setTimeout(playBird, 3000 + Math.random() * 5000);
+            birdTimer = setTimeout(playBird, 4000 + Math.random() * 6000);
         }
 
-        // --- 合成器：马蹄 ---
         function playGallop() {
-            if(!isPlaying) return;
+            if (!isPlaying || currentZone !== 'active') return;
+            
             const speed = parseFloat(document.getElementById('speedSlider').value);
-            const interval = (1 / (speed * 4)) * 1000; // 模拟马蹄节奏
+            const interval = 600 / (speed * 4 + 1); // Rhythm calculation
 
-            const osc = audioCtx.createOscillator();
-            const g = audioCtx.createGain();
-            
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
-            
-            g.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-            
-            osc.connect(g);
-            g.connect(masterGain);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
-            
-            gallopTimer = setTimeout(playGallop, interval);
+            // Gallop is 3-beat pattern: Ta-da-DUM
+            const beats = [0, 0.1, 0.25];
+            beats.forEach(delay => {
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(80, audioCtx.currentTime + delay);
+                osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + delay + 0.1);
+                
+                g.gain.setValueAtTime(0.4, audioCtx.currentTime + delay);
+                g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.1);
+                
+                osc.connect(g);
+                g.connect(masterGain);
+                osc.start(audioCtx.currentTime + delay);
+                osc.stop(audioCtx.currentTime + delay + 0.1);
+            });
+
+            gallopTimer = setTimeout(playGallop, interval + 400);
         }
 
-        // --- 播放控制 ---
+        function setZone(id, btn) {
+            currentZone = id;
+            document.querySelectorAll('.zone-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Clear current timers
+            clearTimeout(birdTimer);
+            clearTimeout(gallopTimer);
+
+            if (isPlaying) {
+                // Restart engine to apply new filter types
+                noiseNode.stop();
+                startEngine();
+                if (id === 'creek' || id === 'work') playBird();
+                if (id === 'active') playGallop();
+            }
+        }
+
         document.getElementById('playBtn').onclick = () => {
             if (!isPlaying) {
                 if (!audioCtx) initAudio();
                 audioCtx.resume();
                 isPlaying = true;
-                document.getElementById('playBtn').innerText = "关闭自然声";
+                document.getElementById('playBtn').innerText = "STOP SOUND";
+                if (currentZone === 'creek' || currentZone === 'work') playBird();
+                if (currentZone === 'active') playGallop();
             } else {
                 audioCtx.suspend();
                 isPlaying = false;
-                document.getElementById('playBtn').innerText = "开启自然声";
+                document.getElementById('playBtn').innerText = "START SOUND";
                 clearTimeout(birdTimer);
                 clearTimeout(gallopTimer);
             }
         };
 
         document.getElementById('softnessSlider').oninput = (e) => {
-            if(isPlaying) biquadFilter.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1);
+            if (isPlaying) filterNode.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1);
         };
-
-        // 设置初始状态
-        setZone('sleep', document.querySelector('.zone-btn'));
     </script>
 </body>
 </html>
