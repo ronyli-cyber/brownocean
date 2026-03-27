@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nature Sound Suite</title>
+    <title>Nature Sound Suite v5</title>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --dim: #94a3b8; --success: #22c55e; }
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --dim: #94a3b8; --success: #22c55e; --rain: #60a5fa; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; }
         .container { max-width: 500px; width: 100%; background: var(--card); padding: 30px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); text-align: center; }
         .zone-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 30px; }
@@ -15,7 +15,9 @@
         .control-group { margin: 20px 0; text-align: left; }
         label { font-size: 0.85rem; color: var(--dim); margin-bottom: 8px; display: block; }
         input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
-        .btn { width: 100%; padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none; margin-top: 10px; }
+        #rainSlider { accent-color: var(--rain); }
+        .btn { width: 100%; padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none; margin-top: 10px; transition: 0.1s; }
+        .btn:active { transform: scale(0.98); }
         #playBtn { background: var(--accent); color: var(--bg); }
         #downloadBtn { background: transparent; border: 2px solid var(--success); color: var(--success); margin-top: 15px; font-size: 0.8rem; }
     </style>
@@ -43,8 +45,8 @@
         </div>
 
         <div class="control-group">
-            <label>Softness (Filter Cutoff)</label>
-            <input type="range" id="softnessSlider" min="100" max="2000" value="400">
+            <label>Sound Softness (Tone)</label>
+            <input type="range" id="softnessSlider" min="100" max="2500" value="400">
         </div>
 
         <div class="control-group">
@@ -52,46 +54,66 @@
             <input type="range" id="speedSlider" min="0" max="1.0" step="0.01" value="0.12">
         </div>
 
-        <button id="playBtn" class="btn">START SOUND</button>
-        <button id="downloadBtn" class="btn">DOWNLOAD PRO WAV</button>
+        <div class="control-group">
+            <label style="color: var(--rain);">Rain Patter (Texture)</label>
+            <input type="range" id="rainSlider" min="0" max="1.0" step="0.01" value="0">
+        </div>
+
+        <button id="playBtn" class="btn">START NATURE</button>
+        <button id="downloadBtn" class="btn">DOWNLOAD 10-CYCLE PRO LOOP</button>
     </div>
 
     <script>
         let audioCtx, masterGain, isPlaying = false;
-        let noiseNode, filterNode, swellNode;
+        let noiseNode, filterNode, swellNode, rainGain;
         let currentZone = 'sleep';
-        let birdTimer, gallopTimer;
+        let birdTimer, gallopTimer, bubbleTimer;
 
         function initAudio() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             masterGain = audioCtx.createGain();
-            masterGain.gain.value = 0.7;
+            masterGain.gain.value = 0.6;
             masterGain.connect(audioCtx.destination);
             startEngine();
         }
 
         function startEngine() {
-            // White Noise Base
             const bufferSize = audioCtx.sampleRate * 2;
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
 
+            // Main Engine (Ocean/Wind/Creek Base)
             noiseNode = audioCtx.createBufferSource();
             noiseNode.buffer = buffer;
             noiseNode.loop = true;
-
             filterNode = audioCtx.createBiquadFilter();
             filterNode.type = (currentZone === 'creek') ? 'bandpass' : 'lowpass';
+            filterNode.Q.value = (currentZone === 'creek') ? 1.5 : 0.7;
             filterNode.frequency.value = document.getElementById('softnessSlider').value;
-
             swellNode = audioCtx.createGain();
             
+            // Rain Engine (High-passed White Noise)
+            const rainSource = audioCtx.createBufferSource();
+            rainSource.buffer = buffer;
+            rainSource.loop = true;
+            const rainFilter = audioCtx.createBiquadFilter();
+            rainFilter.type = "highpass";
+            rainFilter.frequency.value = 3000; // Keep rain thin and shimmering
+            rainGain = audioCtx.createGain();
+            rainGain.gain.value = document.getElementById('rainSlider').value * 0.15;
+
+            // Connections
             noiseNode.connect(filterNode);
             filterNode.connect(swellNode);
             swellNode.connect(masterGain);
-            noiseNode.start();
+            
+            rainSource.connect(rainFilter);
+            rainFilter.connect(rainGain);
+            rainGain.connect(masterGain);
 
+            noiseNode.start();
+            rainSource.start();
             scheduleAutomation();
         }
 
@@ -100,113 +122,9 @@
             const now = audioCtx.currentTime;
             const speed = parseFloat(document.getElementById('speedSlider').value);
             
-            // 1. Swell Logic
             if (speed > 0) {
                 const period = 1 / speed;
                 swellNode.gain.cancelScheduledValues(now);
-                swellNode.gain.exponentialRampToValueAtTime(0.8, now + period/4);
-                swellNode.gain.exponentialRampToValueAtTime(0.2, now + 3*period/4);
-                swellNode.gain.exponentialRampToValueAtTime(0.2, now + period);
-            }
-
-            // 2. Creek "Babbling" - Fast volume jitter
-            if (currentZone === 'creek') {
-                for(let i=0; i<20; i++) {
-                    swellNode.gain.setTargetAtTime(Math.random() * 0.4 + 0.4, now + i*0.1, 0.05);
-                }
-            }
-
-            setTimeout(scheduleAutomation, 2000);
-        }
-
-        function playBird() {
-            if (!isPlaying || (currentZone !== 'creek' && currentZone !== 'work')) return;
-            
-            const osc = audioCtx.createOscillator();
-            const g = audioCtx.createGain();
-            const freq = 2500 + Math.random() * 1500;
-            
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(freq + 600, audioCtx.currentTime + 0.1);
-            
-            g.gain.setValueAtTime(0, audioCtx.currentTime);
-            g.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 0.05);
-            g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
-            
-            osc.connect(g);
-            g.connect(masterGain);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.3);
-            
-            birdTimer = setTimeout(playBird, 4000 + Math.random() * 6000);
-        }
-
-        function playGallop() {
-            if (!isPlaying || currentZone !== 'active') return;
-            
-            const speed = parseFloat(document.getElementById('speedSlider').value);
-            const interval = 600 / (speed * 4 + 1); // Rhythm calculation
-
-            // Gallop is 3-beat pattern: Ta-da-DUM
-            const beats = [0, 0.1, 0.25];
-            beats.forEach(delay => {
-                const osc = audioCtx.createOscillator();
-                const g = audioCtx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(80, audioCtx.currentTime + delay);
-                osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + delay + 0.1);
-                
-                g.gain.setValueAtTime(0.4, audioCtx.currentTime + delay);
-                g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.1);
-                
-                osc.connect(g);
-                g.connect(masterGain);
-                osc.start(audioCtx.currentTime + delay);
-                osc.stop(audioCtx.currentTime + delay + 0.1);
-            });
-
-            gallopTimer = setTimeout(playGallop, interval + 400);
-        }
-
-        function setZone(id, btn) {
-            currentZone = id;
-            document.querySelectorAll('.zone-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            // Clear current timers
-            clearTimeout(birdTimer);
-            clearTimeout(gallopTimer);
-
-            if (isPlaying) {
-                // Restart engine to apply new filter types
-                noiseNode.stop();
-                startEngine();
-                if (id === 'creek' || id === 'work') playBird();
-                if (id === 'active') playGallop();
-            }
-        }
-
-        document.getElementById('playBtn').onclick = () => {
-            if (!isPlaying) {
-                if (!audioCtx) initAudio();
-                audioCtx.resume();
-                isPlaying = true;
-                document.getElementById('playBtn').innerText = "STOP SOUND";
-                if (currentZone === 'creek' || currentZone === 'work') playBird();
-                if (currentZone === 'active') playGallop();
-            } else {
-                audioCtx.suspend();
-                isPlaying = false;
-                document.getElementById('playBtn').innerText = "START SOUND";
-                clearTimeout(birdTimer);
-                clearTimeout(gallopTimer);
-            }
-        };
-
-        document.getElementById('softnessSlider').oninput = (e) => {
-            if (isPlaying) filterNode.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1);
-        };
-    </script>
-</body>
-</html>
+                if (currentZone !== 'active') {
+                    swellNode.gain.exponentialRampToValueAtTime(0.7, now + period/4);
+                    swellNode.gain.exponentialRampToValueAtTime(0.25, now + 3*
