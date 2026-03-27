@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nature Sound Suite v5</title>
+    <title>Nature Sound Suite v5.1</title>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --dim: #94a3b8; --success: #22c55e; --rain: #60a5fa; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; }
@@ -17,7 +17,6 @@
         input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
         #rainSlider { accent-color: var(--rain); }
         .btn { width: 100%; padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none; margin-top: 10px; transition: 0.1s; }
-        .btn:active { transform: scale(0.98); }
         #playBtn { background: var(--accent); color: var(--bg); }
         #downloadBtn { background: transparent; border: 2px solid var(--success); color: var(--success); margin-top: 15px; font-size: 0.8rem; }
     </style>
@@ -55,65 +54,70 @@
         </div>
 
         <div class="control-group">
-            <label style="color: var(--rain);">Rain Patter (Texture)</label>
+            <label style="color: var(--rain);">Rain Patter (High Texture)</label>
             <input type="range" id="rainSlider" min="0" max="1.0" step="0.01" value="0">
         </div>
 
         <button id="playBtn" class="btn">START NATURE</button>
-        <button id="downloadBtn" class="btn">DOWNLOAD 10-CYCLE PRO LOOP</button>
+        <button id="downloadBtn" class="btn">DOWNLOAD PRO WAV</button>
     </div>
 
     <script>
         let audioCtx, masterGain, isPlaying = false;
-        let noiseNode, filterNode, swellNode, rainGain;
+        let noiseNode, rainNode, filterNode, swellNode, rainGain;
         let currentZone = 'sleep';
         let birdTimer, gallopTimer, bubbleTimer;
 
         function initAudio() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            masterGain = audioCtx.createGain();
-            masterGain.gain.value = 0.6;
-            masterGain.connect(audioCtx.destination);
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = 0.6;
+                masterGain.connect(audioCtx.destination);
+            }
             startEngine();
         }
 
         function startEngine() {
+            // Stop any existing nodes before creating new ones
+            if (noiseNode) noiseNode.stop();
+            if (rainNode) rainNode.stop();
+
             const bufferSize = audioCtx.sampleRate * 2;
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
 
-            // Main Engine (Ocean/Wind/Creek Base)
+            // Main Wind/Ocean Generator
             noiseNode = audioCtx.createBufferSource();
             noiseNode.buffer = buffer;
             noiseNode.loop = true;
             filterNode = audioCtx.createBiquadFilter();
             filterNode.type = (currentZone === 'creek') ? 'bandpass' : 'lowpass';
-            filterNode.Q.value = (currentZone === 'creek') ? 1.5 : 0.7;
             filterNode.frequency.value = document.getElementById('softnessSlider').value;
             swellNode = audioCtx.createGain();
-            
-            // Rain Engine (High-passed White Noise)
-            const rainSource = audioCtx.createBufferSource();
-            rainSource.buffer = buffer;
-            rainSource.loop = true;
+
+            // Dedicated Rain Generator
+            rainNode = audioCtx.createBufferSource();
+            rainNode.buffer = buffer;
+            rainNode.loop = true;
             const rainFilter = audioCtx.createBiquadFilter();
             rainFilter.type = "highpass";
-            rainFilter.frequency.value = 3000; // Keep rain thin and shimmering
+            rainFilter.frequency.value = 3500;
             rainGain = audioCtx.createGain();
-            rainGain.gain.value = document.getElementById('rainSlider').value * 0.15;
+            rainGain.gain.value = parseFloat(document.getElementById('rainSlider').value) * 0.15;
 
-            // Connections
+            // Routing
             noiseNode.connect(filterNode);
             filterNode.connect(swellNode);
             swellNode.connect(masterGain);
             
-            rainSource.connect(rainFilter);
+            rainNode.connect(rainFilter);
             rainFilter.connect(rainGain);
             rainGain.connect(masterGain);
 
             noiseNode.start();
-            rainSource.start();
+            rainNode.start();
             scheduleAutomation();
         }
 
@@ -121,10 +125,103 @@
             if (!isPlaying) return;
             const now = audioCtx.currentTime;
             const speed = parseFloat(document.getElementById('speedSlider').value);
-            
-            if (speed > 0) {
+            if (speed > 0 && currentZone !== 'active') {
                 const period = 1 / speed;
                 swellNode.gain.cancelScheduledValues(now);
-                if (currentZone !== 'active') {
-                    swellNode.gain.exponentialRampToValueAtTime(0.7, now + period/4);
-                    swellNode.gain.exponentialRampToValueAtTime(0.25, now + 3*
+                swellNode.gain.exponentialRampToValueAtTime(0.7, now + period/4);
+                swellNode.gain.exponentialRampToValueAtTime(0.25, now + 3*period/4);
+                swellNode.gain.exponentialRampToValueAtTime(0.25, now + period);
+            } else if (currentZone === 'active') {
+                swellNode.gain.setTargetAtTime(0.4, now, 0.1);
+            }
+            setTimeout(scheduleAutomation, 2000);
+        }
+
+        function playBubbles() {
+            if (!isPlaying || currentZone !== 'creek') return;
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            const freq = 650 + Math.random() * 1100;
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.4, audioCtx.currentTime + 0.1);
+            g.gain.setValueAtTime(0, audioCtx.currentTime);
+            g.gain.linearRampToValueAtTime(0.02, audioCtx.currentTime + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+            osc.connect(g); g.connect(masterGain);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+            bubbleTimer = setTimeout(playBubbles, 100 + Math.random() * 250);
+        }
+
+        function playBird() {
+            if (!isPlaying || (currentZone !== 'creek' && currentZone !== 'work')) return;
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            const freq = 2700 + Math.random() * 1200;
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(freq + 500, audioCtx.currentTime + 0.1);
+            g.gain.setValueAtTime(0, audioCtx.currentTime);
+            g.gain.linearRampToValueAtTime(0.02, audioCtx.currentTime + 0.05);
+            g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
+            osc.connect(g); g.connect(masterGain);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+            birdTimer = setTimeout(playBird, 7000 + Math.random() * 9000);
+        }
+
+        function playGallop() {
+            if (!isPlaying || currentZone !== 'active') return;
+            const speed = parseFloat(document.getElementById('speedSlider').value);
+            const interval = 800 / (speed * 3 + 1); 
+            [0, 0.12, 0.25].forEach((delay, idx) => {
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                osc.type = 'triangle';
+                const vol = (idx === 2) ? 0.35 : 0.2;
+                osc.frequency.setValueAtTime(65, audioCtx.currentTime + delay);
+                osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + delay + 0.12);
+                g.gain.setValueAtTime(vol, audioCtx.currentTime + delay);
+                g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + 0.12);
+                osc.connect(g); g.connect(masterGain);
+                osc.start(audioCtx.currentTime + delay); osc.stop(audioCtx.currentTime + delay + 0.12);
+            });
+            gallopTimer = setTimeout(playGallop, interval + 500);
+        }
+
+        function setZone(id, btn) {
+            currentZone = id;
+            document.querySelectorAll('.zone-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            clearTimeout(birdTimer); clearTimeout(gallopTimer); clearTimeout(bubbleTimer);
+            if (isPlaying) {
+                initAudio(); // Restart to apply new zone physics
+                if (id === 'creek') playBubbles();
+                if (id === 'creek' || id === 'work') playBird();
+                if (id === 'active') playGallop();
+            }
+        }
+
+        document.getElementById('playBtn').onclick = () => {
+            if (!isPlaying) {
+                initAudio();
+                audioCtx.resume();
+                isPlaying = true;
+                document.getElementById('playBtn').innerText = "STOP NATURE";
+                if (currentZone === 'creek') playBubbles();
+                if (currentZone === 'creek' || currentZone === 'work') playBird();
+                if (currentZone === 'active') playGallop();
+            } else {
+                audioCtx.suspend();
+                isPlaying = false;
+                document.getElementById('playBtn').innerText = "START NATURE";
+                clearTimeout(birdTimer);
+                clearTimeout(gallopTimer);
+                clearTimeout(bubbleTimer);
+            }
+        };
+
+        document.getElementById('softnessSlider').oninput = (e) => { if (isPlaying) filterNode.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1); };
+        document.getElementById('rainSlider').oninput = (e) => { if (isPlaying && rainGain) rainGain.gain.setTargetAtTime(e.target.value * 0.15, audioCtx.currentTime, 0.1); };
+    </script>
+</body>
+</html>
