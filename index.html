@@ -44,160 +44,34 @@
     </div>
 
     <script>
-        let audioCtx, biquadFilter, swellGain, masterGain, noiseSource, isPlaying = false, audioBuffer;
-
-        function initAudio() {
-            // Safari/Webkit Context Support
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            audioCtx = new AudioContext();
-            
-            const bufferSize = 2 * audioCtx.sampleRate;
-            audioBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const output = audioBuffer.getChannelData(0);
-            let lastOut = 0.0;
-            
-            // Blunt Brown Noise Physics
-            for (let i = 0; i < bufferSize; i++) {
-                const white = Math.random() * 2 - 1;
-                output[i] = (lastOut + (0.02 * white)) / 1.02;
-                lastOut = output[i];
-                output[i] *= 3.5; 
-            }
-
-            noiseSource = audioCtx.createBufferSource();
-            noiseSource.buffer = audioBuffer;
-            noiseSource.loop = true;
-
-            biquadFilter = audioCtx.createBiquadFilter();
-            biquadFilter.type = "lowpass";
-            biquadFilter.frequency.value = document.getElementById('softnessSlider').value;
-
-            swellGain = audioCtx.createGain();
-            swellGain.gain.value = 0.5;
-
-            masterGain = audioCtx.createGain();
-            masterGain.gain.value = 0.8;
-
-            noiseSource.connect(biquadFilter);
-            biquadFilter.connect(swellGain);
-            swellGain.connect(masterGain);
-            masterGain.connect(audioCtx.destination);
-
-            noiseSource.start(0);
-        }
-
         function updateTide() {
-            if (!isPlaying || !audioCtx) return;
-            const now = audioCtx.currentTime;
-            const speed = parseFloat(document.getElementById('speedSlider').value);
+    if (!isPlaying || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    const speed = parseFloat(document.getElementById('speedSlider').value);
 
-            swellGain.gain.cancelScheduledValues(now);
+    // Cancel previous schedules to prevent "stacking" sounds
+    swellGain.gain.cancelScheduledValues(now);
 
-            if (speed <= 0.01) {
-                // Static blunt noise
-                swellGain.gain.setTargetAtTime(0.7, now, 0.3);
-            } else {
-                const period = 1 / speed;
-                // Current Gain Sync
-                swellGain.gain.setValueAtTime(swellGain.gain.value, now);
-                
-                // Recalibrated Physics: Faster Inhale (0.3), Deep Exhale (0.7), Lower Floor (0.15)
-                // Peak Inhale
-                swellGain.gain.exponentialRampToValueAtTime(1.0, now + (period * 0.3));
-                // Receding Tide
-                swellGain.gain.exponentialRampToValueAtTime(0.15, now + (period * 0.8));
-                // Silent Reset
-                swellGain.gain.exponentialRampToValueAtTime(0.15, now + period);
-            }
-            
-            // Re-sync logic every second to keep the slider feeling responsive
-            setTimeout(updateTide, 1000);
-        }
-
-        document.getElementById('playBtn').onclick = async () => {
-            if (!audioCtx) initAudio();
-
-            if (!isPlaying) {
-                // Critical Safari Resume
-                await audioCtx.resume();
-                isPlaying = true;
-                document.getElementById('playBtn').innerText = "STOP OCEAN";
-                updateTide();
-            } else {
-                await audioCtx.suspend();
-                isPlaying = false;
-                document.getElementById('playBtn').innerText = "START OCEAN";
-            }
-        };
-
-        document.getElementById('softnessSlider').oninput = (e) => {
-            if (isPlaying && biquadFilter) {
-                biquadFilter.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1);
-            }
-        };
-
-        document.getElementById('speedSlider').oninput = () => {
-            if (isPlaying) updateTide();
-        };
-
-        // --- WAV EXPORT (Matches Deep Breathing Logic) ---
-        document.getElementById('downloadBtn').onclick = async () => {
-            if (!isPlaying) { alert("Please start the signal first."); return; }
-            const waveSpeed = parseFloat(document.getElementById('speedSlider').value);
-            const cycleDuration = waveSpeed > 0 ? (1 / waveSpeed) : 8;
-            const totalDuration = cycleDuration * 10;
-            
-            const btn = document.getElementById('downloadBtn');
-            btn.innerText = "ENCODING 10 CYCLES...";
-            btn.disabled = true;
-
-            const sr = 44100;
-            const offCtx = new OfflineAudioContext(1, sr * totalDuration, sr);
-            
-            const src = offCtx.createBufferSource();
-            src.buffer = audioBuffer; src.loop = true;
-            const fil = offCtx.createBiquadFilter();
-            fil.type = "lowpass"; fil.frequency.value = biquadFilter.frequency.value;
-            const g = offCtx.createGain();
-            
-            g.gain.setValueAtTime(0.5, 0);
-            for(let i=0; i<10; i++) {
-                let st = i * cycleDuration;
-                if(waveSpeed > 0) {
-                    g.gain.exponentialRampToValueAtTime(1.0, st + (cycleDuration * 0.3));
-                    g.gain.exponentialRampToValueAtTime(0.15, st + (cycleDuration * 0.8));
-                    g.gain.exponentialRampToValueAtTime(0.15, st + cycleDuration);
-                } else {
-                    g.gain.setValueAtTime(0.7, st);
-                }
-            }
-
-            src.connect(fil); fil.connect(g); g.connect(offCtx.destination);
-            src.start();
-            const rendered = await offCtx.startRendering();
-            const blob = bufferToWav(rendered, rendered.length);
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-            a.download = `BluntOcean_DeepTidal_${fil.frequency.value}Hz.wav`;
-            a.click();
-            btn.innerText = "DOWNLOAD PRO LOOP";
-            btn.disabled = false;
-        };
-
-        function bufferToWav(abuffer, len) {
-            let numOfChan = 1, length = len * 2 + 44, buffer = new ArrayBuffer(length), view = new DataView(buffer), pos = 0;
-            const setUint32 = (d) => { view.setUint32(pos, d, true); pos += 4; };
-            const setUint16 = (d) => { view.setUint16(pos, d, true); pos += 2; };
-            setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157);
-            setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(1);
-            setUint32(abuffer.sampleRate); setUint32(abuffer.sampleRate * 2); setUint16(2); setUint16(16);
-            setUint32(0x61746164); setUint32(length - pos - 4);
-            const data = abuffer.getChannelData(0);
-            for(let i=0; i<len; i++) {
-                let s = Math.max(-1, Math.min(1, data[i]));
-                view.setInt16(pos, s < 0 ? s * 32768 : s * 32767, true); pos += 2;
-            }
-            return new Blob([buffer], {type: "audio/wav"});
-        }
+    if (speed <= 0.01) {
+        swellGain.gain.setTargetAtTime(0.7, now, 0.3);
+    } else {
+        const period = 1 / speed;
+        
+        // Start from current value to avoid a "jump" or "click"
+        swellGain.gain.setValueAtTime(swellGain.gain.value, now);
+        
+        // INHALE: Linear ramp is much smoother for low frequencies than exponential
+        // It reaches the peak at 40% of the cycle
+        swellGain.gain.linearRampToValueAtTime(0.9, now + (period * 0.4));
+        
+        // EXHALE: Slower recession to a slightly higher floor (0.25)
+        // This removes the "void" that sounds like a beat
+        swellGain.gain.setTargetAtTime(0.25, now + (period * 0.4), period * 0.3);
+    }
+    
+    // Check for updates every 1.5 seconds
+    setTimeout(updateTide, 1500);
+}
     </script>
 </body>
 </html>
