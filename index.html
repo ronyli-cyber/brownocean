@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blunt Ocean - Ultra Deep</title>
+    <title>Blunt Ocean - High Contrast</title>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --dim: #94a3b8; --success: #22c55e; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; line-height: 1.6; }
@@ -11,7 +11,7 @@
         .control-group { margin: 25px 0; text-align: left; }
         label { font-size: 0.85rem; color: var(--dim); margin-bottom: 8px; display: block; font-weight: 600; }
         input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
-        .btn { width: 100%; padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none; margin-top: 10px; transition: transform 0.1s; }
+        .btn { width: 100%; padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none; margin-top: 10px; transition: 0.1s; }
         #playBtn { background: var(--accent); color: var(--bg); font-size: 1rem; }
         #downloadBtn { background: transparent; border: 2px solid var(--success); color: var(--success); margin-top: 15px; font-size: 0.85rem; }
         .about-box { max-width: 500px; margin-top: 40px; padding: 20px; border-top: 1px solid #334155; text-align: left; }
@@ -25,13 +25,13 @@
         <h2 style="margin-bottom: 25px;">Blunt Ocean Generator</h2>
         
         <div class="control-group">
-            <label>Softness (Deep Heavy <—> Gentle Wind)</label>
+            <label>Softness (Deep Bass <—> Heavy Wind)</label>
             <input type="range" id="softnessSlider" min="100" max="900" value="350">
         </div>
 
         <div class="control-group">
-            <label>Wave Rhythm (Static <—> Deep Tidal Breathing)</label>
-            <input type="range" id="speedSlider" min="0" max="0.25" step="0.005" value="0.1">
+            <label>Wave Rhythm (Steady <—> Deep Breathing)</label>
+            <input type="range" id="speedSlider" min="0" max="0.3" step="0.001" value="0.1">
         </div>
 
         <button id="playBtn" class="btn">START OCEAN</button>
@@ -39,12 +39,13 @@
     </div>
 
     <div class="about-box">
-        <h2>Deep Sleep Shield</h2>
-        <p>This version uses <b>Linear Gain Smoothing</b> to eliminate percussive "thumps" and caps the filter at 900Hz to ensure the signal remains heavy and non-intrusive.</p>
+        <h2>Refined Rhythm Engine</h2>
+        <p>This version uses <b>Instant Parameter Sync</b>. Moving the rhythm slider now clears the current audio timeline and re-schedules the wave cycles immediately, making the speed changes highly audible.</p>
     </div>
 
     <script>
         let audioCtx, biquadFilter, swellGain, masterGain, noiseSource, isPlaying = false, audioBuffer;
+        let tideTimer;
 
         function initAudio() {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -71,7 +72,7 @@
             biquadFilter.frequency.value = document.getElementById('softnessSlider').value;
 
             swellGain = audioCtx.createGain();
-            swellGain.gain.value = 0.5;
+            swellGain.gain.value = 0.7;
 
             masterGain = audioCtx.createGain();
             masterGain.gain.value = 0.8;
@@ -86,25 +87,36 @@
 
         function updateTide() {
             if (!isPlaying || !audioCtx) return;
+            
             const now = audioCtx.currentTime;
             const speed = parseFloat(document.getElementById('speedSlider').value);
 
+            // 1. Wipe all future scheduled volume changes
             swellGain.gain.cancelScheduledValues(now);
+            
+            // 2. Immediate baseline sync to avoid "pops"
+            swellGain.gain.setValueAtTime(swellGain.gain.value, now);
 
-            if (speed <= 0.01) {
-                swellGain.gain.setTargetAtTime(0.7, now, 0.3);
+            if (speed < 0.01) {
+                // Static blunt noise with a fixed comfortable gain
+                swellGain.gain.linearRampToValueAtTime(0.7, now + 0.5);
             } else {
                 const period = 1 / speed;
-                swellGain.gain.setValueAtTime(swellGain.gain.value, now);
                 
-                // FIXED: Using linearRampToValueAtTime to stop the percussive "heartbeat"
-                // Peak Inhale (0.9)
-                swellGain.gain.linearRampToValueAtTime(0.9, now + (period * 0.4));
-                // Gentle Recede to 0.25 (higher floor for less "thump")
-                swellGain.gain.setTargetAtTime(0.25, now + (period * 0.4), period * 0.2);
+                // 3. Schedule a clear 3-stage wave: Peak, Recede, Floor
+                // Stage 1: The Inhale (40% of cycle)
+                swellGain.gain.linearRampToValueAtTime(1.0, now + (period * 0.4));
+                
+                // Stage 2: The Exhale (Drop to 0.2 to make it very distinct)
+                swellGain.gain.linearRampToValueAtTime(0.2, now + (period * 0.9));
+                
+                // Stage 3: Brief pause before next cycle
+                swellGain.gain.linearRampToValueAtTime(0.2, now + period);
+                
+                // 4. Recursive call timed to the period of the wave
+                clearTimeout(tideTimer);
+                tideTimer = setTimeout(updateTide, (period * 1000));
             }
-            
-            setTimeout(updateTide, 1200);
         }
 
         document.getElementById('playBtn').onclick = async () => {
@@ -118,6 +130,7 @@
             } else {
                 await audioCtx.suspend();
                 isPlaying = false;
+                clearTimeout(tideTimer);
                 document.getElementById('playBtn').innerText = "START OCEAN";
             }
         };
@@ -129,12 +142,15 @@
         };
 
         document.getElementById('speedSlider').oninput = () => {
-            if (isPlaying) updateTide();
+            if (isPlaying) {
+                // When slider moves, we force a re-calculation of the wave IMMEDIATELY
+                updateTide();
+            }
         };
 
-        // --- WAV EXPORT ---
+        // --- WAV EXPORT (Synchronized with new logic) ---
         document.getElementById('downloadBtn').onclick = async () => {
-            if (!isPlaying) { alert("Please start the signal first."); return; }
+            if (!isPlaying) { alert("Start the sound first."); return; }
             const waveSpeed = parseFloat(document.getElementById('speedSlider').value);
             const cycleDuration = waveSpeed > 0 ? (1 / waveSpeed) : 8;
             const totalDuration = cycleDuration * 10;
@@ -144,8 +160,7 @@
             btn.disabled = true;
 
             const sr = 44100;
-            const offCtx = new OfflineAudioContext(1, sr * totalDuration, sr);
-            
+            const offCtx = new OfflineAudioContext(1, Math.floor(sr * totalDuration), sr);
             const src = offCtx.createBufferSource();
             src.buffer = audioBuffer; src.loop = true;
             const fil = offCtx.createBiquadFilter();
@@ -156,9 +171,9 @@
             for(let i=0; i<10; i++) {
                 let st = i * cycleDuration;
                 if(waveSpeed > 0) {
-                    g.gain.linearRampToValueAtTime(0.9, st + (cycleDuration * 0.4));
-                    g.gain.linearRampToValueAtTime(0.25, st + (cycleDuration * 0.9));
-                    g.gain.linearRampToValueAtTime(0.25, st + cycleDuration);
+                    g.gain.linearRampToValueAtTime(1.0, st + (cycleDuration * 0.4));
+                    g.gain.linearRampToValueAtTime(0.2, st + (cycleDuration * 0.9));
+                    g.gain.linearRampToValueAtTime(0.2, st + cycleDuration);
                 } else {
                     g.gain.setValueAtTime(0.7, st);
                 }
@@ -169,7 +184,7 @@
             const rendered = await offCtx.startRendering();
             const blob = bufferToWav(rendered, rendered.length);
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-            a.download = `BluntOcean_Recalibrated.wav`;
+            a.download = `BluntOcean_FixedRhythm.wav`;
             a.click();
             btn.innerText = "DOWNLOAD PRO LOOP";
             btn.disabled = false;
