@@ -62,33 +62,43 @@
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             audioCtx = new AudioContext();
             
-            const bufferSize = 2 * audioCtx.sampleRate;
-            audioBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const output = audioBuffer.getChannelData(0);
-            let lastOut = 0.0;
+            // INCREASED BUFFER: 8 seconds to prevent 2Hz/3Hz loop interference
+            const duration = 8; 
+            const bufferSize = duration * audioCtx.sampleRate;
+            audioBuffer = audioCtx.createBuffer(2, bufferSize, audioCtx.sampleRate);
             
-            for (let i = 0; i < bufferSize; i++) {
-                const white = Math.random() * 2 - 1;
-                output[i] = (lastOut + (0.02 * white)) / 1.02;
-                lastOut = output[i];
-                output[i] *= 3.5; 
+            for (let channel = 0; channel < 2; channel++) {
+                const output = audioBuffer.getChannelData(channel);
+                let lastOut = 0.0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    // Brown Noise integration
+                    output[i] = (lastOut + (0.02 * white)) / 1.02;
+                    lastOut = output[i];
+                    output[i] *= 3.5; 
+                }
             }
 
             noiseSource = audioCtx.createBufferSource();
             noiseSource.buffer = audioBuffer;
             noiseSource.loop = true;
 
+            // NEW: Sub-sonic Filter (Removes the 2-3Hz pressure "thump")
+            const hpFilter = audioCtx.createBiquadFilter();
+            hpFilter.type = "highpass";
+            hpFilter.frequency.value = 30; // Cut everything below 30Hz
+
             biquadFilter = audioCtx.createBiquadFilter();
             biquadFilter.type = "lowpass";
             biquadFilter.frequency.value = document.getElementById('softnessSlider').value;
 
             swellGain = audioCtx.createGain();
-            swellGain.gain.value = 0.5;
-
             masterGain = audioCtx.createGain();
             masterGain.gain.value = 0.8;
 
-            noiseSource.connect(biquadFilter);
+            // Signal Chain: Source -> HP Filter -> LP Filter -> Swell -> Master
+            noiseSource.connect(hpFilter);
+            hpFilter.connect(biquadFilter);
             biquadFilter.connect(swellGain);
             swellGain.connect(masterGain);
             masterGain.connect(audioCtx.destination);
