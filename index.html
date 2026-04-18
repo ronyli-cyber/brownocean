@@ -2,67 +2,65 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blunt Ocean - Professional Grade</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Blunt Ocean Tuner</title>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --dim: #94a3b8; --success: #22c55e; --warn: #f59e0b; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; line-height: 1.6; }
-        .container { max-width: 500px; width: 100%; background: var(--card); padding: 30px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); text-align: center; }
-        .control-group { margin: 25px 0; text-align: left; }
-        label { font-size: 0.85rem; color: var(--dim); margin-bottom: 8px; display: block; font-weight: 600; }
-        input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
-        
-        .button-row { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; margin-top: 20px; }
-        .btn { padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none; transition: 0.2s; }
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --dim: #94a3b8; --success: #22c55e; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; height: 100vh; justify-content: center; }
+        .container { max-width: 400px; width: 100%; background: var(--card); padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); text-align: center; box-sizing: border-box; }
+        h2 { font-size: 1.2rem; margin: 0 0 15px 0; letter-spacing: -0.02em; }
+        .control-group { margin: 15px 0; text-align: left; }
+        label { font-size: 0.75rem; color: var(--dim); margin-bottom: 5px; display: block; font-weight: 600; }
+        input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; height: 25px; }
+        .button-row { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-top: 15px; }
+        .btn { padding: 14px; border-radius: 10px; font-weight: 700; cursor: pointer; border: none; font-size: 0.9rem; transition: 0.1s; }
         #resetBtn { background: #334155; color: var(--text); }
         #playBtn { background: var(--accent); color: var(--bg); }
-        #playBtn.playing { background: var(--warn); }
-        #downloadBtn { width: 100%; background: transparent; border: 2px solid var(--success); color: var(--success); margin-top: 15px; font-size: 0.85rem; }
-        
-        .status-badge { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; color: var(--accent); margin-bottom: 10px; display: block; }
+        #downloadBtn { width: 100%; background: transparent; border: 1.5px solid var(--success); color: var(--success); margin-top: 12px; font-size: 0.8rem; padding: 10px; }
+        .info-section { max-width: 400px; margin-top: 20px; text-align: left; font-size: 0.75rem; color: var(--dim); line-height: 1.4; }
+        .info-section b { color: var(--text); }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <span class="status-badge" id="status">ENGINE READY</span>
-        <h2 style="margin-top: 0;">Blunt Ocean Tuner</h2>
+        <h2>Blunt Ocean Tuner</h2>
         
         <div class="control-group">
-            <label>Softness (Deep Heavy <—> Heavy Wind)</label>
+            <label>Softness</label>
             <input type="range" id="softnessSlider" min="100" max="900" value="350">
         </div>
 
         <div class="control-group">
-            <label>Wave Rhythm (Steady <—> Deep Breathing)</label>
+            <label>Wave Rhythm</label>
             <input type="range" id="speedSlider" min="0" max="0.3" step="0.001" value="0.1">
         </div>
 
         <div class="control-group">
-            <label>Contrast (Subtle Drift <—> Dramatic Swell)</label>
+            <label>Contrast</label>
             <input type="range" id="contrastSlider" min="0" max="0.9" step="0.01" value="0.7">
         </div>
 
         <div class="button-row">
             <button id="resetBtn" class="btn">RESET</button>
-            <button id="playBtn" class="btn">PLAY SIGNAL</button>
+            <button id="playBtn" class="btn">PLAY</button>
         </div>
         
-        <button id="downloadBtn" class="btn">DOWNLOAD PRO LOOP</button>
+        <button id="downloadBtn" class="btn">DOWNLOAD 10-CYCLE CLIP</button>
+    </div>
+
+    <div class="info-section">
+        <p><b>Why Brown Noise?</b> Unlike white noise, brown noise mimics low-frequency natural sounds, effectively masking disruptive traffic or snoring by raising the "audio floor." <b>Tip:</b> Pair your phone with a smart speaker placed against a wall—the wall acts as a soundboard to deepen the bass for a more immersive shield.</p>
     </div>
 
     <script>
         let audioCtx, biquadFilter, swellGain, masterGain, noiseSource, isPlaying = false, audioBuffer;
         let tideTimer;
-
-        // Default Recommended Levels
         const DEFAULTS = { softness: 350, speed: 0.1, contrast: 0.7 };
 
         function initAudio() {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             audioCtx = new AudioContext();
-            
-            // INCREASED BUFFER: 8 seconds to prevent 2Hz/3Hz loop interference
             const duration = 8; 
             const bufferSize = duration * audioCtx.sampleRate;
             audioBuffer = audioCtx.createBuffer(2, bufferSize, audioCtx.sampleRate);
@@ -72,7 +70,6 @@
                 let lastOut = 0.0;
                 for (let i = 0; i < bufferSize; i++) {
                     const white = Math.random() * 2 - 1;
-                    // Brown Noise integration
                     output[i] = (lastOut + (0.02 * white)) / 1.02;
                     lastOut = output[i];
                     output[i] *= 3.5; 
@@ -83,10 +80,9 @@
             noiseSource.buffer = audioBuffer;
             noiseSource.loop = true;
 
-            // NEW: Sub-sonic Filter (Removes the 2-3Hz pressure "thump")
             const hpFilter = audioCtx.createBiquadFilter();
             hpFilter.type = "highpass";
-            hpFilter.frequency.value = 30; // Cut everything below 30Hz
+            hpFilter.frequency.value = 30;
 
             biquadFilter = audioCtx.createBiquadFilter();
             biquadFilter.type = "lowpass";
@@ -96,23 +92,19 @@
             masterGain = audioCtx.createGain();
             masterGain.gain.value = 0.8;
 
-            // Signal Chain: Source -> HP Filter -> LP Filter -> Swell -> Master
             noiseSource.connect(hpFilter);
             hpFilter.connect(biquadFilter);
             biquadFilter.connect(swellGain);
             swellGain.connect(masterGain);
             masterGain.connect(audioCtx.destination);
-
             noiseSource.start(0);
         }
 
         function updateTide() {
             if (!isPlaying || !audioCtx) return;
-            
             const now = audioCtx.currentTime;
             const speed = parseFloat(document.getElementById('speedSlider').value);
             const contrast = parseFloat(document.getElementById('contrastSlider').value);
-
             swellGain.gain.cancelScheduledValues(now);
             swellGain.gain.setValueAtTime(swellGain.gain.value, now);
 
@@ -120,16 +112,10 @@
                 swellGain.gain.linearRampToValueAtTime(0.7, now + 0.5);
             } else {
                 const period = 1 / speed;
-                // Floor is calculated by how much contrast is subtracted from peak (1.0)
                 const floorValue = Math.max(0.05, 1.0 - contrast); 
-                
-                // Inhale (40% of cycle)
                 swellGain.gain.linearRampToValueAtTime(1.0, now + (period * 0.4));
-                // Exhale (to floorValue)
                 swellGain.gain.linearRampToValueAtTime(floorValue, now + (period * 0.9));
-                // Hold
                 swellGain.gain.linearRampToValueAtTime(floorValue, now + period);
-                
                 clearTimeout(tideTimer);
                 tideTimer = setTimeout(updateTide, (period * 1000));
             }
@@ -140,31 +126,23 @@
                 audioCtx.suspend();
                 isPlaying = false;
                 clearTimeout(tideTimer);
-                document.getElementById('playBtn').innerText = "APPLY & PLAY";
-                document.getElementById('playBtn').classList.remove('playing');
-                document.getElementById('status').innerText = "SETTINGS STAGED";
+                document.getElementById('playBtn').innerText = "PLAY";
             }
         }
 
         document.getElementById('playBtn').onclick = async () => {
             if (!audioCtx) initAudio();
-
             if (!isPlaying) {
                 await audioCtx.resume();
-                // Apply current softness immediately
                 biquadFilter.frequency.value = document.getElementById('softnessSlider').value;
                 isPlaying = true;
-                document.getElementById('playBtn').innerText = "PAUSE SIGNAL";
-                document.getElementById('playBtn').classList.add('playing');
-                document.getElementById('status').innerText = "SIGNAL ACTIVE";
+                document.getElementById('playBtn').innerText = "PAUSE";
                 updateTide();
             } else {
                 audioCtx.suspend();
                 isPlaying = false;
                 clearTimeout(tideTimer);
-                document.getElementById('playBtn').innerText = "RESUME SIGNAL";
-                document.getElementById('playBtn').classList.remove('playing');
-                document.getElementById('status').innerText = "PAUSED";
+                document.getElementById('playBtn').innerText = "PLAY";
             }
         };
 
@@ -175,25 +153,19 @@
             forcePause();
         };
 
-        // UI Listeners: Any change pauses the sound to stage new settings
         ['softnessSlider', 'speedSlider', 'contrastSlider'].forEach(id => {
-            document.getElementById(id).oninput = () => {
-                if (isPlaying) forcePause();
-            };
+            document.getElementById(id).oninput = () => forcePause();
         });
 
-        // --- WAV EXPORT (Includes Contrast Physics) ---
+        // --- WAV DOWNLOAD LOGIC ---
         document.getElementById('downloadBtn').onclick = async () => {
+            if (!audioBuffer) { alert("Play once first."); return; }
             const softness = document.getElementById('softnessSlider').value;
             const waveSpeed = parseFloat(document.getElementById('speedSlider').value);
             const contrast = parseFloat(document.getElementById('contrastSlider').value);
             const floorValue = Math.max(0.05, 1.0 - contrast);
-
-            if (!audioBuffer) { alert("Please play the sound once to initialize."); return; }
-            
             const cycleDuration = waveSpeed > 0 ? (1 / waveSpeed) : 8;
             const totalDuration = cycleDuration * 10;
-            
             const btn = document.getElementById('downloadBtn');
             btn.innerText = "ENCODING...";
             btn.disabled = true;
@@ -205,7 +177,6 @@
             const fil = offCtx.createBiquadFilter();
             fil.type = "lowpass"; fil.frequency.value = softness;
             const g = offCtx.createGain();
-            
             g.gain.setValueAtTime(0.5, 0);
             for(let i=0; i<10; i++) {
                 let st = i * cycleDuration;
@@ -213,30 +184,25 @@
                     g.gain.linearRampToValueAtTime(1.0, st + (cycleDuration * 0.4));
                     g.gain.linearRampToValueAtTime(floorValue, st + (cycleDuration * 0.9));
                     g.gain.linearRampToValueAtTime(floorValue, st + cycleDuration);
-                } else {
-                    g.gain.setValueAtTime(0.7, st);
-                }
+                } else { g.gain.setValueAtTime(0.7, st); }
             }
-
             src.connect(fil); fil.connect(g); g.connect(offCtx.destination);
             src.start();
             const rendered = await offCtx.startRendering();
             const blob = bufferToWav(rendered, rendered.length);
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-            a.download = `BluntOcean_Custom_Tune.wav`;
-            a.click();
-            btn.innerText = "DOWNLOAD PRO LOOP";
-            btn.disabled = false;
+            a.download = `BluntOcean_Clip.wav`; a.click();
+            btn.innerText = "DOWNLOAD 10-CYCLE CLIP"; btn.disabled = false;
         };
 
         function bufferToWav(abuffer, len) {
-            let numOfChan = 1, length = len * 2 + 44, buffer = new ArrayBuffer(length), view = new DataView(buffer), pos = 0;
+            let buffer = new ArrayBuffer(len * 2 + 44), view = new DataView(buffer), pos = 0;
             const setUint32 = (d) => { view.setUint32(pos, d, true); pos += 4; };
             const setUint16 = (d) => { view.setUint16(pos, d, true); pos += 2; };
-            setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157);
+            setUint32(0x46464952); setUint32(buffer.byteLength - 8); setUint32(0x45564157);
             setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(1);
             setUint32(abuffer.sampleRate); setUint32(abuffer.sampleRate * 2); setUint16(2); setUint16(16);
-            setUint32(0x61746164); setUint32(length - pos - 4);
+            setUint32(0x61746164); setUint32(buffer.byteLength - pos - 4);
             const data = abuffer.getChannelData(0);
             for(let i=0; i<len; i++) {
                 let s = Math.max(-1, Math.min(1, data[i]));
