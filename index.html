@@ -1,227 +1,68 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nature Sound Suite v5.1</title>
-    <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --dim: #94a3b8; --success: #22c55e; --rain: #60a5fa; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; }
-        .container { max-width: 500px; width: 100%; background: var(--card); padding: 30px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); text-align: center; }
-        .zone-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 30px; }
-        .zone-btn { background: #334155; border: 2px solid transparent; border-radius: 12px; padding: 15px 5px; cursor: pointer; color: var(--dim); display: flex; flex-direction: column; align-items: center; gap: 8px; transition: 0.2s; }
-        .zone-btn.active { border-color: var(--accent); color: var(--accent); background: #1e293b; }
-        .zone-btn svg { width: 24px; height: 24px; fill: currentColor; }
-        .control-group { margin: 20px 0; text-align: left; }
-        label { font-size: 0.85rem; color: var(--dim); margin-bottom: 8px; display: block; }
-        input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
-        #rainSlider { accent-color: var(--rain); }
-        .btn { width: 100%; padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none; margin-top: 10px; transition: 0.1s; }
-        #playBtn { background: var(--accent); color: var(--bg); }
-        #downloadBtn { background: transparent; border: 2px solid var(--success); color: var(--success); margin-top: 15px; font-size: 0.8rem; }
-    </style>
-</head>
-<body>
+const downloadBtn = document.getElementById('downloadBtn');
 
-    <div class="container">
-        <div class="zone-selector">
-            <button class="zone-btn active" onclick="setZone('sleep', this)">
-                <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
-                <span>Ocean</span>
-            </button>
-            <button class="zone-btn" onclick="setZone('creek', this)">
-                <svg viewBox="0 0 24 24"><path d="M10 2v2h4V2h-4zm3 16.18V11h-2v7.18c-1.15.28-2 .72-2 1.32 0 1.1 1.79 2 4 2s4-.9 4-2c0-.6-.85-1.04-2-1.32z"/></svg>
-                <span>Creek</span>
-            </button>
-            <button class="zone-btn" onclick="setZone('work', this)">
-                <svg viewBox="0 0 24 24"><path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10z"/></svg>
-                <span>Leaves</span>
-            </button>
-            <button class="zone-btn" onclick="setZone('active', this)">
-                <svg viewBox="0 0 24 24"><path d="M19 7l-2 6h-4l3-9-8 8h3l-2 6h5l2-11z"/></svg>
-                <span>Gallop</span>
-            </button>
-        </div>
+downloadBtn.onclick = async () => {
+    if (!isPlaying) { alert("Please Start Tide first to record."); return; }
+    
+    const waveSpeed = parseFloat(document.getElementById('speedSlider').value);
+    
+    // 1. Calculate the duration of ONE perfect cycle
+    // If speed is 0 (Steady Rumble), we'll use a standard 10s loop
+    const cycleDuration = waveSpeed > 0 ? (1 / waveSpeed) : 10;
+    
+    // 2. We will bake 10 cycles into the file for stability
+    const numCycles = 10;
+    const totalDuration = cycleDuration * numCycles;
 
-        <div class="control-group">
-            <label>Sound Softness (Tone)</label>
-            <input type="range" id="softnessSlider" min="100" max="2500" value="400">
-        </div>
+    downloadBtn.innerText = `Baking 10 Cycles (${totalDuration.toFixed(1)}s)...`;
+    downloadBtn.disabled = true;
 
-        <div class="control-group">
-            <label>Intensity (Swell/Rhythm)</label>
-            <input type="range" id="speedSlider" min="0" max="1.0" step="0.01" value="0.12">
-        </div>
+    // 3. Render the loop at high fidelity (44.1kHz)
+    const sampleRate = 44100;
+    const offlineCtx = new OfflineAudioContext(1, sampleRate * totalDuration, sampleRate);
+    
+    // Reconstruct the "Blunt Ocean" signal chain
+    const source = offlineCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.loop = true;
 
-        <div class="control-group">
-            <label style="color: var(--rain);">Rain Patter (High Texture)</label>
-            <input type="range" id="rainSlider" min="0" max="1.0" step="0.01" value="0">
-        </div>
+    const filter = offlineCtx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = biquadFilter.frequency.value;
 
-        <button id="playBtn" class="btn">START NATURE</button>
-        <button id="downloadBtn" class="btn">DOWNLOAD PRO WAV</button>
-    </div>
-
-    <script>
-        let audioCtx, masterGain, isPlaying = false;
-        let noiseNode, rainNode, filterNode, swellNode, rainGain;
-        let currentZone = 'sleep';
-        let birdTimer, gallopTimer, bubbleTimer;
-
-        function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                masterGain = audioCtx.createGain();
-                masterGain.gain.value = 0.6;
-                masterGain.connect(audioCtx.destination);
-            }
-            startEngine();
+    const g = offlineCtx.createGain();
+    
+    // Create the "Swell" automation for the entire 10-cycle duration
+    g.gain.setValueAtTime(0.4, 0);
+    for (let i = 0; i < numCycles; i++) {
+        let startTime = i * cycleDuration;
+        if (waveSpeed > 0) {
+            // Perfect mathematical sine-like swell per cycle
+            g.gain.exponentialRampToValueAtTime(0.9, startTime + (cycleDuration / 4));
+            g.gain.exponentialRampToValueAtTime(0.4, startTime + (3 * cycleDuration / 4));
+            g.gain.exponentialRampToValueAtTime(0.4, startTime + cycleDuration);
+        } else {
+            g.gain.setValueAtTime(0.8, startTime);
         }
+    }
 
-        function startEngine() {
-            // Stop any existing nodes before creating new ones
-            if (noiseNode) noiseNode.stop();
-            if (rainNode) rainNode.stop();
+    source.connect(filter);
+    filter.connect(g);
+    g.connect(offlineCtx.destination);
+    source.start();
 
-            const bufferSize = audioCtx.sampleRate * 2;
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-
-            // Main Wind/Ocean Generator
-            noiseNode = audioCtx.createBufferSource();
-            noiseNode.buffer = buffer;
-            noiseNode.loop = true;
-            filterNode = audioCtx.createBiquadFilter();
-            filterNode.type = (currentZone === 'creek') ? 'bandpass' : 'lowpass';
-            filterNode.frequency.value = document.getElementById('softnessSlider').value;
-            swellNode = audioCtx.createGain();
-
-            // Dedicated Rain Generator
-            rainNode = audioCtx.createBufferSource();
-            rainNode.buffer = buffer;
-            rainNode.loop = true;
-            const rainFilter = audioCtx.createBiquadFilter();
-            rainFilter.type = "highpass";
-            rainFilter.frequency.value = 3500;
-            rainGain = audioCtx.createGain();
-            rainGain.gain.value = parseFloat(document.getElementById('rainSlider').value) * 0.15;
-
-            // Routing
-            noiseNode.connect(filterNode);
-            filterNode.connect(swellNode);
-            swellNode.connect(masterGain);
-            
-            rainNode.connect(rainFilter);
-            rainFilter.connect(rainGain);
-            rainGain.connect(masterGain);
-
-            noiseNode.start();
-            rainNode.start();
-            scheduleAutomation();
-        }
-
-        function scheduleAutomation() {
-            if (!isPlaying) return;
-            const now = audioCtx.currentTime;
-            const speed = parseFloat(document.getElementById('speedSlider').value);
-            if (speed > 0 && currentZone !== 'active') {
-                const period = 1 / speed;
-                swellNode.gain.cancelScheduledValues(now);
-                swellNode.gain.exponentialRampToValueAtTime(0.7, now + period/4);
-                swellNode.gain.exponentialRampToValueAtTime(0.25, now + 3*period/4);
-                swellNode.gain.exponentialRampToValueAtTime(0.25, now + period);
-            } else if (currentZone === 'active') {
-                swellNode.gain.setTargetAtTime(0.4, now, 0.1);
-            }
-            setTimeout(scheduleAutomation, 2000);
-        }
-
-        function playBubbles() {
-            if (!isPlaying || currentZone !== 'creek') return;
-            const osc = audioCtx.createOscillator();
-            const g = audioCtx.createGain();
-            const freq = 650 + Math.random() * 1100;
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(freq * 1.4, audioCtx.currentTime + 0.1);
-            g.gain.setValueAtTime(0, audioCtx.currentTime);
-            g.gain.linearRampToValueAtTime(0.02, audioCtx.currentTime + 0.02);
-            g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-            osc.connect(g); g.connect(masterGain);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.15);
-            bubbleTimer = setTimeout(playBubbles, 100 + Math.random() * 250);
-        }
-
-        function playBird() {
-            if (!isPlaying || (currentZone !== 'creek' && currentZone !== 'work')) return;
-            const osc = audioCtx.createOscillator();
-            const g = audioCtx.createGain();
-            const freq = 2700 + Math.random() * 1200;
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(freq + 500, audioCtx.currentTime + 0.1);
-            g.gain.setValueAtTime(0, audioCtx.currentTime);
-            g.gain.linearRampToValueAtTime(0.02, audioCtx.currentTime + 0.05);
-            g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
-            osc.connect(g); g.connect(masterGain);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
-            birdTimer = setTimeout(playBird, 7000 + Math.random() * 9000);
-        }
-
-        function playGallop() {
-            if (!isPlaying || currentZone !== 'active') return;
-            const speed = parseFloat(document.getElementById('speedSlider').value);
-            const interval = 800 / (speed * 3 + 1); 
-            [0, 0.12, 0.25].forEach((delay, idx) => {
-                const osc = audioCtx.createOscillator();
-                const g = audioCtx.createGain();
-                osc.type = 'triangle';
-                const vol = (idx === 2) ? 0.35 : 0.2;
-                osc.frequency.setValueAtTime(65, audioCtx.currentTime + delay);
-                osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + delay + 0.12);
-                g.gain.setValueAtTime(vol, audioCtx.currentTime + delay);
-                g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + 0.12);
-                osc.connect(g); g.connect(masterGain);
-                osc.start(audioCtx.currentTime + delay); osc.stop(audioCtx.currentTime + delay + 0.12);
-            });
-            gallopTimer = setTimeout(playGallop, interval + 500);
-        }
-
-        function setZone(id, btn) {
-            currentZone = id;
-            document.querySelectorAll('.zone-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            clearTimeout(birdTimer); clearTimeout(gallopTimer); clearTimeout(bubbleTimer);
-            if (isPlaying) {
-                initAudio(); // Restart to apply new zone physics
-                if (id === 'creek') playBubbles();
-                if (id === 'creek' || id === 'work') playBird();
-                if (id === 'active') playGallop();
-            }
-        }
-
-        document.getElementById('playBtn').onclick = () => {
-            if (!isPlaying) {
-                initAudio();
-                audioCtx.resume();
-                isPlaying = true;
-                document.getElementById('playBtn').innerText = "STOP NATURE";
-                if (currentZone === 'creek') playBubbles();
-                if (currentZone === 'creek' || currentZone === 'work') playBird();
-                if (currentZone === 'active') playGallop();
-            } else {
-                audioCtx.suspend();
-                isPlaying = false;
-                document.getElementById('playBtn').innerText = "START NATURE";
-                clearTimeout(birdTimer);
-                clearTimeout(gallopTimer);
-                clearTimeout(bubbleTimer);
-            }
-        };
-
-        document.getElementById('softnessSlider').oninput = (e) => { if (isPlaying) filterNode.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1); };
-        document.getElementById('rainSlider').oninput = (e) => { if (isPlaying && rainGain) rainGain.gain.setTargetAtTime(e.target.value * 0.15, audioCtx.currentTime, 0.1); };
-    </script>
-</body>
-</html>
+    // 4. Render and Encode to Pro WAV
+    const renderedBuffer = await offlineCtx.startRendering();
+    const wavBlob = bufferToWav(renderedBuffer, renderedBuffer.length);
+    
+    const url = URL.createObjectURL(wavBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    
+    // Filename includes the "Softness" setting for your records
+    const softness = document.getElementById('softnessSlider').value;
+    a.download = `BluntOcean_Cycle10_S${softness}Hz.wav`;
+    a.click();
+    
+    downloadBtn.innerText = "RECORD & DOWNLOAD LOOP";
+    downloadBtn.disabled = false;
+};
