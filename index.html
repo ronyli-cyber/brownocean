@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blunt Ocean - Brown Noise Shield</title>
+    <title>Blunt Ocean - Deep Tidal Shield</title>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --dim: #94a3b8; --success: #22c55e; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; margin: 0; line-height: 1.6; }
@@ -13,7 +13,7 @@
         input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
         .btn { width: 100%; padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none; margin-top: 10px; transition: transform 0.1s; }
         #playBtn { background: var(--accent); color: var(--bg); font-size: 1rem; }
-        #downloadBtn { background: transparent; border: 2px solid var(--success); color: var(--success); margin-top: 15px; }
+        #downloadBtn { background: transparent; border: 2px solid var(--success); color: var(--success); margin-top: 15px; font-size: 0.85rem; }
         .about-box { max-width: 500px; margin-top: 40px; padding: 20px; border-top: 1px solid #334155; text-align: left; }
         h2 { font-size: 1.1rem; color: var(--text); margin-bottom: 10px; }
         p { font-size: 0.9rem; color: var(--dim); margin: 0; }
@@ -30,30 +30,33 @@
         </div>
 
         <div class="control-group">
-            <label>Wave Rhythm (Static <—> Deep Swell)</label>
-            <input type="range" id="speedSlider" min="0" max="0.4" step="0.01" value="0.12">
+            <label>Wave Rhythm (Static <—> Deep Tidal Breathing)</label>
+            <input type="range" id="speedSlider" min="0" max="0.25" step="0.005" value="0.1">
         </div>
 
         <button id="playBtn" class="btn">START OCEAN</button>
-        <button id="downloadBtn" class="btn">DOWNLOAD 10-CYCLE LOOP</button>
+        <button id="downloadBtn" class="btn">DOWNLOAD 10-CYCLE PRO LOOP</button>
     </div>
 
     <div class="about-box">
         <h2>Deep Sleep Shield</h2>
-        <p>This generator uses brown noise with a 2nd-order low-pass filter to mask household "startle" noises. The Wave Rhythm simulates the ebb and flow of a distant tide.</p>
+        <p>Calibrated for heavy brown noise masking. The wave rhythm uses an asymmetrical 30/70 inhale-exhale ratio to mimic natural tidal physics.</p>
     </div>
 
     <script>
         let audioCtx, biquadFilter, swellGain, masterGain, noiseSource, isPlaying = false, audioBuffer;
 
         function initAudio() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            // Safari/Webkit Context Support
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
             
-            // Generate Blunt Brown Noise Buffer
             const bufferSize = 2 * audioCtx.sampleRate;
             audioBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const output = audioBuffer.getChannelData(0);
             let lastOut = 0.0;
+            
+            // Blunt Brown Noise Physics
             for (let i = 0; i < bufferSize; i++) {
                 const white = Math.random() * 2 - 1;
                 output[i] = (lastOut + (0.02 * white)) / 1.02;
@@ -70,6 +73,8 @@
             biquadFilter.frequency.value = document.getElementById('softnessSlider').value;
 
             swellGain = audioCtx.createGain();
+            swellGain.gain.value = 0.5;
+
             masterGain = audioCtx.createGain();
             masterGain.gain.value = 0.8;
 
@@ -78,63 +83,74 @@
             swellGain.connect(masterGain);
             masterGain.connect(audioCtx.destination);
 
-            noiseSource.start();
-            updateTide();
+            noiseSource.start(0);
         }
 
         function updateTide() {
-            if (!isPlaying) return;
+            if (!isPlaying || !audioCtx) return;
             const now = audioCtx.currentTime;
             const speed = parseFloat(document.getElementById('speedSlider').value);
 
             swellGain.gain.cancelScheduledValues(now);
 
-            if (speed === 0) {
-                swellGain.gain.setTargetAtTime(0.7, now, 0.2);
+            if (speed <= 0.01) {
+                // Static blunt noise
+                swellGain.gain.setTargetAtTime(0.7, now, 0.3);
             } else {
                 const period = 1 / speed;
-                // Create a smooth continuous loop of swells
+                // Current Gain Sync
                 swellGain.gain.setValueAtTime(swellGain.gain.value, now);
-                swellGain.gain.exponentialRampToValueAtTime(0.9, now + (period / 4));
-                swellGain.gain.exponentialRampToValueAtTime(0.3, now + (3 * period / 4));
-                swellGain.gain.exponentialRampToValueAtTime(0.3, now + period);
+                
+                // Recalibrated Physics: Faster Inhale (0.3), Deep Exhale (0.7), Lower Floor (0.15)
+                // Peak Inhale
+                swellGain.gain.exponentialRampToValueAtTime(1.0, now + (period * 0.3));
+                // Receding Tide
+                swellGain.gain.exponentialRampToValueAtTime(0.15, now + (period * 0.8));
+                // Silent Reset
+                swellGain.gain.exponentialRampToValueAtTime(0.15, now + period);
             }
             
-            // Re-sync every 2 seconds to catch slider changes
-            setTimeout(updateTide, 2000);
+            // Re-sync logic every second to keep the slider feeling responsive
+            setTimeout(updateTide, 1000);
         }
 
-        document.getElementById('playBtn').onclick = () => {
+        document.getElementById('playBtn').onclick = async () => {
+            if (!audioCtx) initAudio();
+
             if (!isPlaying) {
-                if (!audioCtx) initAudio();
-                audioCtx.resume();
+                // Critical Safari Resume
+                await audioCtx.resume();
                 isPlaying = true;
                 document.getElementById('playBtn').innerText = "STOP OCEAN";
                 updateTide();
             } else {
-                audioCtx.suspend();
+                await audioCtx.suspend();
                 isPlaying = false;
                 document.getElementById('playBtn').innerText = "START OCEAN";
             }
         };
 
-        // Instant Updates
         document.getElementById('softnessSlider').oninput = (e) => {
-            if (isPlaying) biquadFilter.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1);
+            if (isPlaying && biquadFilter) {
+                biquadFilter.frequency.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1);
+            }
         };
 
         document.getElementById('speedSlider').oninput = () => {
             if (isPlaying) updateTide();
         };
 
-        // --- WAV DOWNLOAD LOGIC (Simplified for Brown Noise) ---
+        // --- WAV EXPORT (Matches Deep Breathing Logic) ---
         document.getElementById('downloadBtn').onclick = async () => {
-            if (!isPlaying) { alert("Start the sound first."); return; }
+            if (!isPlaying) { alert("Please start the signal first."); return; }
             const waveSpeed = parseFloat(document.getElementById('speedSlider').value);
-            const cycleDuration = waveSpeed > 0 ? (1 / waveSpeed) : 5;
+            const cycleDuration = waveSpeed > 0 ? (1 / waveSpeed) : 8;
             const totalDuration = cycleDuration * 10;
             
-            document.getElementById('downloadBtn').innerText = "ENCODING...";
+            const btn = document.getElementById('downloadBtn');
+            btn.innerText = "ENCODING 10 CYCLES...";
+            btn.disabled = true;
+
             const sr = 44100;
             const offCtx = new OfflineAudioContext(1, sr * totalDuration, sr);
             
@@ -148,21 +164,23 @@
             for(let i=0; i<10; i++) {
                 let st = i * cycleDuration;
                 if(waveSpeed > 0) {
-                    g.gain.exponentialRampToValueAtTime(0.9, st + (cycleDuration/4));
-                    g.gain.exponentialRampToValueAtTime(0.3, st + (3*cycleDuration/4));
-                    g.gain.exponentialRampToValueAtTime(0.3, st + cycleDuration);
+                    g.gain.exponentialRampToValueAtTime(1.0, st + (cycleDuration * 0.3));
+                    g.gain.exponentialRampToValueAtTime(0.15, st + (cycleDuration * 0.8));
+                    g.gain.exponentialRampToValueAtTime(0.15, st + cycleDuration);
+                } else {
+                    g.gain.setValueAtTime(0.7, st);
                 }
             }
 
             src.connect(fil); fil.connect(g); g.connect(offCtx.destination);
             src.start();
             const rendered = await offCtx.startRendering();
-            
-            // Simple WAV encode
             const blob = bufferToWav(rendered, rendered.length);
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-            a.download = "Blunt_Ocean_Loop.wav"; a.click();
-            document.getElementById('downloadBtn').innerText = "DOWNLOAD PRO LOOP";
+            a.download = `BluntOcean_DeepTidal_${fil.frequency.value}Hz.wav`;
+            a.click();
+            btn.innerText = "DOWNLOAD PRO LOOP";
+            btn.disabled = false;
         };
 
         function bufferToWav(abuffer, len) {
